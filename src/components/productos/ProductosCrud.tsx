@@ -238,12 +238,13 @@ export function ProductosCrud() {
           data={items}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <ProductoCard
               producto={item}
               onEdit={openEdit}
               onDelete={confirmDelete}
               busy={deletingId === item.id}
+              index={index}
             />
           )}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
