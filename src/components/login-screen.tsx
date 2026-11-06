@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -60,32 +59,32 @@ function AmbientGlow({ color, size, style }: AmbientGlowProps) {
   return (
     <View
       pointerEvents="none"
-      style={[
-        styles.glow,
-        { width: size, height: size, borderRadius: size / 2 },
-        style,
-      ]}
+      style={[{ position: 'absolute', width: size, height: size, borderRadius: size / 2 }, style]}
     >
-      <View style={[styles.glowLayer, { backgroundColor: color, opacity: 0.07 }]} />
       <View
-        style={[
-          styles.glowLayer,
-          { backgroundColor: color, opacity: 0.06, transform: [{ scale: 0.66 }] },
-        ]}
+        className="absolute inset-0 rounded-full"
+        style={{ backgroundColor: color, opacity: 0.07 }}
       />
       <View
-        style={[
-          styles.glowLayer,
-          { backgroundColor: color, opacity: 0.07, transform: [{ scale: 0.38 }] },
-        ]}
+        className="absolute inset-0 rounded-full"
+        style={{ backgroundColor: color, opacity: 0.06, transform: [{ scale: 0.66 }] }}
+      />
+      <View
+        className="absolute inset-0 rounded-full"
+        style={{ backgroundColor: color, opacity: 0.07, transform: [{ scale: 0.38 }] }}
       />
     </View>
   );
 }
 
 function FieldLabel({ children }: { children: string }) {
-  return <Text style={styles.fieldLabel}>{children}</Text>;
+  return (
+    <Text className="mb-2 text-[9px] font-bold tracking-[1.6px] text-app-text-muted">{children}</Text>
+  );
 }
+
+const inputBase =
+  'h-[54px] rounded-[15px] border px-4 text-[15px] tracking-[0.1px] text-[#F2F8F5]';
 
 export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
   const passwordRef = useRef<TextInput>(null);
@@ -133,9 +132,7 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
     try {
       // Se carga bajo demanda para no inicializar Supabase durante el render
       // estático en web (AsyncStorage necesita `window`).
-      const { auth, signInWithEmailAndPassword } = await import(
-        '@/features/auth/supabaseAuth'
-      );
+      const { auth, signInWithEmailAndPassword } = await import('@/features/auth/supabaseAuth');
       const { user } = await signInWithEmailAndPassword(auth, cleanEmail, password);
       setPassword('');
       setNotice(`Sesión iniciada como ${user.email ?? cleanEmail}.`);
@@ -166,15 +163,11 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
         return;
       }
 
-      setNotice(
-        `Sesión iniciada como ${result.user.email ?? 'tu cuenta de Google'}.`,
-      );
+      setNotice(`Sesión iniciada como ${result.user.email ?? 'tu cuenta de Google'}.`);
       onSignedIn?.(result.user);
     } catch (googleError) {
       setError(
-        googleError instanceof Error
-          ? googleError.message
-          : 'No se pudo iniciar sesión con Google.',
+        googleError instanceof Error ? googleError.message : 'No se pudo iniciar sesión con Google.',
       );
     } finally {
       setLoading(null);
@@ -210,9 +203,7 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
         }
       }
 
-      const { auth, sendPasswordResetEmail } = await import(
-        '@/features/auth/supabaseAuth'
-      );
+      const { auth, sendPasswordResetEmail } = await import('@/features/auth/supabaseAuth');
       await sendPasswordResetEmail(auth, cleanEmail);
       setNotice('Te enviamos un enlace para restablecer tu contraseña.');
     } catch (resetError) {
@@ -256,9 +247,7 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
       const providers = (user.app_metadata?.providers as string[] | undefined) ?? [];
       const identities = user.identities ?? [];
       const yaRegistrado =
-        identities.length === 0 ||
-        providers.includes('google') ||
-        providers.length > 1;
+        identities.length === 0 || providers.includes('google') || providers.length > 1;
 
       if (yaRegistrado) {
         setError(
@@ -277,9 +266,7 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
       setNotice('Cuenta creada correctamente. Ya puedes iniciar sesión.');
     } catch (createError) {
       setError(
-        createError instanceof Error
-          ? createError.message
-          : 'No se pudo crear la cuenta.',
+        createError instanceof Error ? createError.message : 'No se pudo crear la cuenta.',
       );
     } finally {
       setLoading(null);
@@ -287,85 +274,116 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-app-bg" style={{ flex: 1, backgroundColor: '#050F1A' }} edges={['top', 'bottom']}>
       <StatusBar style="light" />
 
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.backdrop]}>
-        <AmbientGlow color={loginPalette.green} size={430} style={styles.glowTop} />
-        <AmbientGlow color={loginPalette.blueGlow} size={380} style={styles.glowBottom} />
-        <View style={[styles.ring, styles.ringTop]} />
-        <View style={[styles.ring, styles.ringBottom]} />
+      <View pointerEvents="none" className="absolute inset-0 overflow-hidden">
+        <AmbientGlow color="#2FD68B" size={430} style={{ top: -210, right: -170 }} />
+        <AmbientGlow color="#1268A8" size={380} style={{ bottom: -200, left: -170 }} />
+        <View
+          className="absolute rounded-full border border-[rgba(47,214,139,0.18)]"
+          style={{ top: -120, right: -80, width: 300, height: 300 }}
+        />
+        <View
+          className="absolute rounded-full border border-[rgba(18,104,168,0.28)]"
+          style={{ bottom: -80, left: -70, width: 230, height: 230 }}
+        />
       </View>
 
       <KeyboardAvoidingView
-        style={styles.flex}
+        className="flex-1"
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 22, paddingVertical: 24 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.content}>
-            <View style={styles.header}>
-              <View style={styles.brand}>
-                <View style={styles.brandMark}>
-                  <Text style={styles.brandMarkText}>N</Text>
+          <View className="w-full max-w-115 self-center">
+            <View className="flex-row items-center justify-between gap-3">
+              <View className="flex-row items-center gap-3">
+                <View
+                  className="h-11.5 w-11.5tems-center justify-center rounded-[15px] bg-app-green"
+                  style={{
+                    shadowColor: '#2FD68B',
+                    shadowOpacity: 0.35,
+                    shadowRadius: 14,
+                    shadowOffset: { width: 0, height: 6 },
+                    elevation: 5,
+                  }}
+                >
+                  <Text className="text-[23px] font-black tracking-[-1px] text-app-green-deep">N</Text>
                 </View>
                 <View>
-                  <Text style={styles.brandName}>NEXO</Text>
-                  <Text style={styles.brandTag}>TECH STORE</Text>
+                  <Text className="text-[17px] font-extrabold tracking-[4px] text-app-text">NEXO</Text>
+                  <Text className="mt-0.5 text-[9px] font-bold tracking-[2.6px] text-app-text-dim">
+                    TECH STORE
+                  </Text>
                 </View>
               </View>
 
-              <View style={styles.statusPill}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>EN LÍNEA</Text>
+              <View className="flex-row items-center gap-1.5 rounded-full border border-[rgba(47,214,139,0.28)] bg-[rgba(12,59,42,0.45)] px-2.5 py-1.5">
+                <View className="h-1.5 w-1.5 rounded-[3px] bg-app-green" />
+                <Text className="text-[9px] font-bold tracking-[1.4px] text-app-green-light">EN LÍNEA</Text>
               </View>
             </View>
 
-            <View style={styles.hero}>
-              <View style={styles.badge}>
-                <View style={styles.badgeDot} />
-                <Text style={styles.badgeText}>NUEVA COLECCIÓN 2026</Text>
+            <View className="mt-10.5 mb-7">
+              <View className="flex-row items-center gap-2 self-start rounded-full border border-[rgba(168,242,201,0.22)] bg-[rgba(7,42,30,0.55)] px-2.75 py-1.75">
+                <View className="h-1.25 w-1.25 rounded-[3px] bg-app-green-light" />
+                <Text className="text-[9px] font-bold tracking-[1.5px] text-app-green-light">
+                  NUEVA COLECCIÓN 2026
+                </Text>
               </View>
 
-              <Text style={styles.title}>
+              <Text className="mt-4.5 text-[38px] font-extrabold leading-10.75 tracking-[-1.6px] text-app-text">
                 Bienvenido{'\n'}
-                <Text style={styles.titleAccent}>de nuevo.</Text>
+                <Text className="text-app-green-light">de nuevo.</Text>
               </Text>
 
-              <Text style={styles.subtitle}>
+              <Text className="mt-3 max-w-82.5 text-[14px] leading-5.25 tracking-[0.1px] text-app-text-muted">
                 Inicia sesión para seguir comprando lo último en tecnología.
               </Text>
             </View>
 
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardEyebrow}>ACCESO A TU CUENTA</Text>
-                <Text style={styles.cardHint}>Es rápido y seguro</Text>
+            <View
+              className="rounded-[26px] border border-[rgba(24,56,80,0.9)] bg-[rgba(9,27,43,0.94)] p-5"
+              style={{
+                shadowColor: '#000000',
+                shadowOpacity: 0.4,
+                shadowRadius: 26,
+                shadowOffset: { width: 0, height: 18 },
+                elevation: 10,
+              }}
+            >
+              <View className="mb-4 flex-row items-center justify-between gap-2.5">
+                <Text className="text-[9px] font-extrabold tracking-[1.8px] text-app-green-light">
+                  ACCESO A TU CUENTA
+                </Text>
+                <Text className="text-[11px] text-app-text-dim">Es rápido y seguro</Text>
               </View>
 
               {error ? (
                 <View
-                  style={[styles.banner, styles.bannerError]}
+                  className="mb-3.5 rounded-xl border border-[rgba(255,154,154,0.32)] bg-app-danger-bg px-3 py-2.5"
                   accessibilityLiveRegion="polite"
                 >
-                  <Text style={styles.bannerErrorText}>{error}</Text>
+                  <Text className="text-[12px] leading-4.25 text-app-danger">{error}</Text>
                 </View>
               ) : null}
 
               {notice ? (
                 <View
-                  style={[styles.banner, styles.bannerSuccess]}
+                  className="mb-3.5 rounded-xl border border-[rgba(47,214,139,0.32)] bg-[rgba(12,59,42,0.75)] px-3 py-2.5"
                   accessibilityLiveRegion="polite"
                 >
-                  <Text style={styles.bannerSuccessText}>{notice}</Text>
+                  <Text className="text-[12px] leading-4.25 text-app-green-light">{notice}</Text>
                 </View>
               ) : null}
 
-              <View style={styles.field}>
+              <View className="mb-3.5">
                 <FieldLabel>CORREO ELECTRÓNICO</FieldLabel>
                 <TextInput
                   value={email}
@@ -374,27 +392,28 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
                   onBlur={() => setFocusedField(null)}
                   onSubmitEditing={() => passwordRef.current?.focus()}
                   placeholder="tu@correo.com"
-                  placeholderTextColor={loginPalette.textDim}
-                  style={[
-                    styles.input,
-                    focusedField === 'email' && styles.inputFocused,
-                  ]}
+                  placeholderTextColor="#5C7A90"
+                  className={`${inputBase} ${
+                    focusedField === 'email'
+                      ? 'border-app-green bg-app-navy-soft'
+                      : 'border-app-navy-line bg-app-navy'
+                  }`}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="email"
                   textContentType="emailAddress"
                   returnKeyType="next"
-                  selectionColor={loginPalette.green}
+                  selectionColor="#2FD68B"
                   keyboardAppearance="dark"
                   editable={!isBusy}
                   accessibilityLabel="Correo electrónico"
                 />
               </View>
 
-              <View style={styles.field}>
+              <View className="mb-3.5">
                 <FieldLabel>CONTRASEÑA</FieldLabel>
-                <View style={styles.passwordWrap}>
+                <View className="relative">
                   <TextInput
                     ref={passwordRef}
                     value={password}
@@ -403,19 +422,19 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
                     onBlur={() => setFocusedField(null)}
                     onSubmitEditing={handleEmailSignIn}
                     placeholder="Mínimo 6 caracteres"
-                    placeholderTextColor={loginPalette.textDim}
-                    style={[
-                      styles.input,
-                      styles.passwordInput,
-                      focusedField === 'password' && styles.inputFocused,
-                    ]}
+                    placeholderTextColor="#5C7A90"
+                    className={`${inputBase} pr-21.5 ${
+                      focusedField === 'password'
+                        ? 'border-app-green bg-app-navy-soft'
+                        : 'border-app-navy-line bg-app-navy'
+                    }`}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="current-password"
                     textContentType="password"
                     returnKeyType="go"
-                    selectionColor={loginPalette.green}
+                    selectionColor="#2FD68B"
                     keyboardAppearance="dark"
                     editable={!isBusy}
                     accessibilityLabel="Contraseña"
@@ -423,32 +442,36 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
                   <Pressable
                     onPress={() => setShowPassword((current) => !current)}
                     hitSlop={10}
-                    style={styles.visibilityButton}
+                    className="absolute right-3.5 top-0 bottom-0 justify-center"
                     accessibilityRole="button"
-                    accessibilityLabel={
-                      showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
-                    }
+                    accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
-                    <Text style={styles.visibilityText}>
+                    <Text className="text-[9px] font-extrabold tracking-[1.2px] text-app-green">
                       {showPassword ? 'OCULTAR' : 'MOSTRAR'}
                     </Text>
                   </Pressable>
                 </View>
               </View>
 
-              <View style={styles.optionsRow}>
+              <View className="mt-0.5 mb-4.5 flex-row items-center justify-between gap-3">
                 <Pressable
                   onPress={() => setRemember((current) => !current)}
                   hitSlop={8}
-                  style={styles.rememberRow}
+                  className="flex-row items-center gap-2"
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: remember }}
                   accessibilityLabel="Recordarme"
                 >
-                  <View style={[styles.checkbox, remember && styles.checkboxChecked]}>
-                    {remember ? <Text style={styles.checkboxMark}>✓</Text> : null}
+                  <View
+                    className={`h-4.75 w-4.75 items-center justify-center rounded-md border ${
+                      remember ? 'border-app-green bg-app-green' : 'border-app-navy-line bg-app-navy'
+                    }`}
+                  >
+                    {remember ? (
+                      <Text className="text-[12px] font-black leading-3.75 text-app-green-deep">✓</Text>
+                    ) : null}
                   </View>
-                  <Text style={styles.rememberText}>Recordarme</Text>
+                  <Text className="text-[12px] text-app-text-muted">Recordarme</Text>
                 </Pressable>
 
                 <Pressable
@@ -458,7 +481,7 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
                   accessibilityRole="button"
                   accessibilityLabel="Olvidé mi contraseña"
                 >
-                  <Text style={[styles.link, isBusy && styles.linkDisabled]}>
+                  <Text className={`text-[12px] font-semibold text-app-green-light ${isBusy ? 'opacity-50' : ''}`}>
                     {loading === 'reset' ? 'Enviando…' : '¿Olvidaste tu contraseña?'}
                   </Text>
                 </Pressable>
@@ -469,23 +492,39 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
                 disabled={isBusy}
                 accessibilityRole="button"
                 accessibilityLabel="Iniciar sesión"
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && !isBusy && styles.primaryButtonPressed,
-                  isBusy && loading !== 'email' && styles.buttonMuted,
-                ]}
+                className="h-14"
               >
-                {loading === 'email' ? (
-                  <ActivityIndicator color={loginPalette.greenDeep} />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Iniciar sesión</Text>
+                {({ pressed }) => (
+                  <View
+                    className={`h-14 items-center justify-center rounded-[17px] ${
+                      pressed && !isBusy ? 'bg-app-green' : 'bg-app-green-light'
+                    } ${isBusy && loading !== 'email' ? 'opacity-[0.55]' : ''}`}
+                    style={[
+                      pressed && !isBusy ? { transform: [{ scale: 0.99 }] } : null,
+                      {
+                        shadowColor: '#2FD68B',
+                        shadowOpacity: 0.3,
+                        shadowRadius: 18,
+                        shadowOffset: { width: 0, height: 10 },
+                        elevation: 6,
+                      },
+                    ]}
+                  >
+                    {loading === 'email' ? (
+                      <ActivityIndicator color="#072A1E" />
+                    ) : (
+                      <Text className="text-[15px] font-extrabold tracking-[0.4px] text-app-green-deep">
+                        Iniciar sesión
+                      </Text>
+                    )}
+                  </View>
                 )}
               </Pressable>
 
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>o continúa con</Text>
-                <View style={styles.dividerLine} />
+              <View className="my-4.5 flex-row items-center gap-3">
+                <View className="h-px flex-1 bg-[rgba(143,168,186,0.16)]" />
+                <Text className="text-[10px] tracking-[0.6px] text-app-text-dim">o continúa con</Text>
+                <View className="h-px flex-1 bg-[rgba(143,168,186,0.16)]" />
               </View>
 
               <Pressable
@@ -493,38 +532,46 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
                 disabled={isBusy}
                 accessibilityRole="button"
                 accessibilityLabel="Continuar con Google"
-                style={({ pressed }) => [
-                  styles.googleButton,
-                  pressed && !isBusy && styles.googleButtonPressed,
-                  isBusy && loading !== 'google' && styles.buttonMuted,
-                ]}
+                className="h-13.5"
               >
-                {loading === 'google' ? (
-                  <ActivityIndicator color={loginPalette.greenLight} />
-                ) : (
-                  <>
-                    <View style={styles.googleMark}>
-                      <Text style={styles.googleMarkText}>G</Text>
-                    </View>
-                    <Text style={styles.googleButtonText}>Continuar con Google</Text>
-                  </>
+                {({ pressed }) => (
+                  <View
+                    className={`h-13.5 flex-row items-center justify-center gap-2.5 rounded-[17px] border ${
+                      pressed && !isBusy
+                        ? 'border-[rgba(47,214,139,0.4)] bg-app-navy-soft'
+                        : 'border-app-navy-line bg-app-navy'
+                    } ${isBusy && loading !== 'google' ? 'opacity-[0.55]' : ''}`}
+                  >
+                    {loading === 'google' ? (
+                      <ActivityIndicator color="#A8F2C9" />
+                    ) : (
+                      <>
+                        <View className="h-6 w-6 items-center justify-center rounded-full bg-[#FFFFFF]">
+                          <Text className="text-[14px] font-black leading-4.5 text-[#1A73E8]">G</Text>
+                        </View>
+                        <Text className="text-[14px] font-semibold text-app-text">
+                          Continuar con Google
+                        </Text>
+                      </>
+                    )}
+                  </View>
                 )}
               </Pressable>
             </View>
 
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>¿No tienes cuenta?</Text>
+            <View className="mt-5.5 flex-row items-center justify-center gap-1.5">
+              <Text className="text-[13px] text-app-text-muted">¿No tienes cuenta?</Text>
               <Pressable
                 onPress={handleCreateAccount}
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel="Crear cuenta"
               >
-                <Text style={styles.footerLink}>Crear cuenta</Text>
+                <Text className="text-[13px] font-bold text-app-green-light">Crear cuenta</Text>
               </Pressable>
             </View>
 
-            <Text style={styles.legal}>
+            <Text className="mt-4.5 px-3 text-center text-[10px] leading-3.75 text-app-text-dim">
               Conexión cifrada · Al continuar aceptas los términos de servicio y la
               política de privacidad.
             </Text>
@@ -534,420 +581,3 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: loginPalette.background,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 22,
-    paddingVertical: 24,
-  },
-  content: {
-    width: '100%',
-    maxWidth: 460,
-    alignSelf: 'center',
-  },
-  backdrop: {
-    overflow: 'hidden',
-  },
-  glow: {
-    position: 'absolute',
-  },
-  glowLayer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    borderRadius: 9999,
-  },
-  glowTop: {
-    top: -210,
-    right: -170,
-  },
-  glowBottom: {
-    bottom: -200,
-    left: -170,
-  },
-  ring: {
-    position: 'absolute',
-    borderRadius: 9999,
-    borderWidth: 1,
-  },
-  ringTop: {
-    top: -120,
-    right: -80,
-    width: 300,
-    height: 300,
-    borderColor: 'rgba(47, 214, 139, 0.18)',
-  },
-  ringBottom: {
-    bottom: -80,
-    left: -70,
-    width: 230,
-    height: 230,
-    borderColor: 'rgba(18, 104, 168, 0.28)',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  brand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  brandMark: {
-    width: 46,
-    height: 46,
-    borderRadius: 15,
-    backgroundColor: loginPalette.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: loginPalette.green,
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
-  brandMarkText: {
-    color: loginPalette.greenDeep,
-    fontSize: 23,
-    fontWeight: '900',
-    letterSpacing: -1,
-  },
-  brandName: {
-    color: loginPalette.text,
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: 4,
-  },
-  brandTag: {
-    marginTop: 2,
-    color: loginPalette.textDim,
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 2.6,
-  },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(47, 214, 139, 0.28)',
-    backgroundColor: 'rgba(12, 59, 42, 0.45)',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: loginPalette.green,
-  },
-  statusText: {
-    color: loginPalette.greenLight,
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-  },
-  hero: {
-    marginTop: 42,
-    marginBottom: 28,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(168, 242, 201, 0.22)',
-    backgroundColor: 'rgba(7, 42, 30, 0.55)',
-  },
-  badgeDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: loginPalette.greenLight,
-  },
-  badgeText: {
-    color: loginPalette.greenLight,
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-  },
-  title: {
-    marginTop: 18,
-    color: loginPalette.text,
-    fontSize: 38,
-    lineHeight: 43,
-    fontWeight: '800',
-    letterSpacing: -1.6,
-  },
-  titleAccent: {
-    color: loginPalette.greenLight,
-  },
-  subtitle: {
-    marginTop: 12,
-    maxWidth: 330,
-    color: loginPalette.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-    letterSpacing: 0.1,
-  },
-  card: {
-    padding: 20,
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: 'rgba(24, 56, 80, 0.9)',
-    backgroundColor: 'rgba(9, 27, 43, 0.94)',
-    shadowColor: '#000000',
-    shadowOpacity: 0.4,
-    shadowRadius: 26,
-    shadowOffset: { width: 0, height: 18 },
-    elevation: 10,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 16,
-  },
-  cardEyebrow: {
-    color: loginPalette.greenLight,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.8,
-  },
-  cardHint: {
-    color: loginPalette.textDim,
-    fontSize: 11,
-  },
-  banner: {
-    marginBottom: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  bannerError: {
-    backgroundColor: loginPalette.dangerBg,
-    borderColor: 'rgba(255, 154, 154, 0.32)',
-  },
-  bannerErrorText: {
-    color: loginPalette.danger,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  bannerSuccess: {
-    backgroundColor: 'rgba(12, 59, 42, 0.75)',
-    borderColor: 'rgba(47, 214, 139, 0.32)',
-  },
-  bannerSuccessText: {
-    color: loginPalette.greenLight,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  field: {
-    marginBottom: 14,
-  },
-  fieldLabel: {
-    marginBottom: 8,
-    color: loginPalette.textMuted,
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 1.6,
-  },
-  input: {
-    height: 54,
-    paddingHorizontal: 16,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: loginPalette.navyLine,
-    backgroundColor: loginPalette.navy,
-    color: loginPalette.text,
-    fontSize: 15,
-    letterSpacing: 0.1,
-  },
-  inputFocused: {
-    borderColor: loginPalette.green,
-    backgroundColor: loginPalette.navySoft,
-  },
-  passwordWrap: {
-    position: 'relative',
-  },
-  passwordInput: {
-    paddingRight: 86,
-  },
-  visibilityButton: {
-    position: 'absolute',
-    right: 14,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-  },
-  visibilityText: {
-    color: loginPalette.green,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  optionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginTop: 2,
-    marginBottom: 18,
-  },
-  rememberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  checkbox: {
-    width: 19,
-    height: 19,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: loginPalette.navyLine,
-    backgroundColor: loginPalette.navy,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: {
-    borderColor: loginPalette.green,
-    backgroundColor: loginPalette.green,
-  },
-  checkboxMark: {
-    color: loginPalette.greenDeep,
-    fontSize: 12,
-    fontWeight: '900',
-    lineHeight: 15,
-  },
-  rememberText: {
-    color: loginPalette.textMuted,
-    fontSize: 12,
-  },
-  link: {
-    color: loginPalette.greenLight,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  linkDisabled: {
-    opacity: 0.5,
-  },
-  primaryButton: {
-    height: 56,
-    borderRadius: 17,
-    backgroundColor: loginPalette.greenLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: loginPalette.green,
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
-  },
-  primaryButtonPressed: {
-    backgroundColor: loginPalette.green,
-    transform: [{ scale: 0.99 }],
-  },
-  primaryButtonText: {
-    color: loginPalette.greenDeep,
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-  },
-  buttonMuted: {
-    opacity: 0.55,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginVertical: 18,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(143, 168, 186, 0.16)',
-  },
-  dividerText: {
-    color: loginPalette.textDim,
-    fontSize: 10,
-    letterSpacing: 0.6,
-  },
-  googleButton: {
-    height: 54,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: loginPalette.navyLine,
-    backgroundColor: loginPalette.navy,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  googleButtonPressed: {
-    backgroundColor: loginPalette.navySoft,
-    borderColor: 'rgba(47, 214, 139, 0.4)',
-  },
-  googleMark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: loginPalette.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleMarkText: {
-    color: '#1A73E8',
-    fontSize: 14,
-    fontWeight: '900',
-    lineHeight: 18,
-  },
-  googleButtonText: {
-    color: loginPalette.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 22,
-  },
-  footerText: {
-    color: loginPalette.textMuted,
-    fontSize: 13,
-  },
-  footerLink: {
-    color: loginPalette.greenLight,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  legal: {
-    marginTop: 18,
-    paddingHorizontal: 12,
-    color: loginPalette.textDim,
-    fontSize: 10,
-    lineHeight: 15,
-    textAlign: 'center',
-  },
-});

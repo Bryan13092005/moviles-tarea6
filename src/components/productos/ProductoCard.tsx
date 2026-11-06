@@ -1,8 +1,10 @@
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { withUniwind } from 'uniwind';
 
-import { palette } from '@/constants/theme';
 import type { Producto } from '@/features/productos/productos.types';
+
+const AnimatedView = withUniwind(Animated.View);
 
 type Props = {
   producto: Producto;
@@ -17,236 +19,133 @@ function formatPrice(value: number | null) {
   return `$${value.toFixed(2)}`;
 }
 
+const cardShadow = {
+  shadowColor: '#1268A8',
+  shadowOpacity: 0.22,
+  shadowRadius: 14,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 6,
+  flexDirection: 'row' as const,
+  gap: 14,
+  padding: 14,
+  borderRadius: 22,
+  borderWidth: 1,
+  borderColor: 'rgba(47, 214, 139, 0.18)',
+  backgroundColor: 'rgba(8, 26, 43, 0.97)',
+  overflow: 'hidden' as const,
+};
+
 export function ProductoCard({ producto, onEdit, onDelete, busy, index = 0 }: Props) {
   const lowStock = producto.stock != null && producto.stock <= 5;
 
   return (
-    <Animated.View
+    <AnimatedView
       entering={FadeInDown.delay(Math.min(index, 10) * 70)
         .duration(420)
         .springify()
         .damping(18)}
-      style={styles.card}
+      className="flex-row gap-3.5 rounded-[22px] border border-[rgba(47,214,139,0.18)] bg-[rgba(8,26,43,0.97)] p-3.5 overflow-hidden"
+      style={cardShadow}
     >
-      <View style={styles.cardGlow} pointerEvents="none" />
-      <View style={styles.cardAccent} pointerEvents="none" />
+      <View
+        pointerEvents="none"
+        className="absolute -right-7.5 -top-10 h-35 w-35 rounded-full bg-[rgba(18,104,168,0.16)]"
+      />
+      <View
+        pointerEvents="none"
+        className="absolute left-0 top-4.5 bottom-4.5 w-0.75 rounded-full bg-app-green opacity-[0.85]"
+      />
 
-      <View style={styles.imageWrap}>
-        <View style={styles.imageRing}>
-          <View style={styles.imageBox}>
+      <View className="items-center gap-2">
+        <View className="rounded-[18px] bg-[rgba(47,214,139,0.22)] p-0.5">
+          <View className="h-23.5 w-23.5 overflow-hidden rounded-2xl border border-[rgba(168,242,201,0.18)] bg-app-navy-soft">
             {producto.img ? (
-              <Image source={{ uri: producto.img }} style={styles.image} resizeMode="cover" />
+              <Image source={{ uri: producto.img }} className="h-full w-full" resizeMode="cover" />
             ) : (
-              <View style={styles.imageFallback}>
-                <View style={styles.imageFallbackIcon}>
-                  <Text style={styles.imageFallbackText}>IMG</Text>
+              <View className="flex-1 items-center justify-center bg-app-navy">
+                <View className="h-10.5 w-10.5 items-center justify-center rounded-xl border border-app-navy-line bg-[rgba(12,34,54,0.9)]">
+                  <Text className="text-[10px] font-extrabold tracking-[1.2px] text-app-text-dim">IMG</Text>
                 </View>
               </View>
             )}
           </View>
         </View>
-        <View style={styles.pricePill}>
-          <Text style={styles.pricePillText}>{formatPrice(producto.precio)}</Text>
+        <View className="max-w-24.5 rounded-full border border-[rgba(168,242,201,0.28)] bg-[rgba(12,59,42,0.72)] px-2.5 py-1.25">
+          <Text className="text-center text-[13px] font-extrabold text-app-green-light">{formatPrice(producto.precio)}</Text>
         </View>
       </View>
 
-      <View style={styles.body}>
-        <Text style={styles.name} numberOfLines={2}>
+      <View className="min-w-0 flex-1 pt-0.5">
+        <Text className="text-[16px] font-extrabold leading-5.25 tracking-[-0.2px] text-app-text" numberOfLines={2}>
           {producto.nombre?.trim() || 'Sin nombre'}
         </Text>
 
-        <View style={styles.metaRow}>
+        <View className="mt-2 flex-row flex-wrap gap-2">
           {producto.stock != null ? (
-            <View style={[styles.stockBadge, lowStock && styles.stockBadgeLow]}>
-              <View style={[styles.stockDot, lowStock && styles.stockDotLow]} />
-              <Text style={[styles.stockText, lowStock && styles.stockTextLow]}>
+            <View
+              className={`flex-row items-center gap-1.5 rounded-full border px-2.5 py-1.25 ${
+                lowStock
+                  ? 'border-[rgba(255,154,154,0.22)] bg-[rgba(52,19,28,0.35)]'
+                  : 'border-[rgba(143,168,186,0.18)] bg-[rgba(12,34,54,0.7)]'
+              }`}
+            >
+              <View className={`h-1.5 w-1.5 rounded-full ${lowStock ? 'bg-app-danger' : 'bg-app-green'}`} />
+              <Text className={`text-[11px] font-bold ${lowStock ? 'text-app-danger' : 'text-app-text-muted'}`}>
                 {producto.stock} en stock
               </Text>
             </View>
           ) : (
-            <View style={styles.stockBadge}>
-              <Text style={styles.stockText}>Stock —</Text>
+            <View className="flex-row items-center gap-1.5 rounded-full border border-[rgba(143,168,186,0.18)] bg-[rgba(12,34,54,0.7)] px-2.5 py-1.25">
+              <Text className="text-[11px] font-bold text-app-text-muted">Stock —</Text>
             </View>
           )}
         </View>
 
-        <View style={styles.actions}>
+        <View className="mt-3 flex-row gap-2">
           <Pressable
             onPress={() => onEdit(producto)}
             disabled={busy}
             accessibilityRole="button"
             accessibilityLabel={`Actualizar ${producto.nombre ?? 'producto'}`}
-            style={({ pressed }) => [
-              styles.btn,
-              styles.editBtn,
-              pressed && !busy && styles.editPressed,
-              busy && styles.muted,
-            ]}
+            className="min-h-9.5 flex-1"
           >
-            <Text style={styles.editText}>Actualizar</Text>
+            {({ pressed }) => (
+              <View
+                className={`min-h-9.5 w-full items-center justify-center rounded-xl border px-3.25 ${
+                  pressed && !busy
+                    ? 'border-[rgba(47,214,139,0.55)] bg-[rgba(12,59,42,0.45)]'
+                    : 'border-[rgba(168,242,201,0.22)] bg-[rgba(12,34,54,0.95)]'
+                } ${busy ? 'opacity-[0.55]' : ''}`}
+              >
+                <Text className="text-[12px] font-extrabold tracking-[0.2px] text-app-green-light">Actualizar</Text>
+              </View>
+            )}
           </Pressable>
           <Pressable
             onPress={() => onDelete(producto)}
             disabled={busy}
             accessibilityRole="button"
             accessibilityLabel={`Eliminar ${producto.nombre ?? 'producto'}`}
-            style={({ pressed }) => [
-              styles.btn,
-              styles.deleteBtn,
-              pressed && !busy && styles.deletePressed,
-              busy && styles.muted,
-            ]}
+            className="min-h-9.5 flex-1"
           >
-            {busy ? (
-              <ActivityIndicator size="small" color={palette.danger} />
-            ) : (
-              <Text style={styles.deleteText}>Eliminar</Text>
+            {({ pressed }) => (
+              <View
+                className={`min-h-9.5 w-full items-center justify-center rounded-xl border px-3.25 ${
+                  pressed && !busy
+                    ? 'border-[rgba(255,154,154,0.4)] bg-app-danger-bg'
+                    : 'border-[rgba(255,154,154,0.22)] bg-[rgba(52,19,28,0.38)]'
+                } ${busy ? 'opacity-[0.55]' : ''}`}
+              >
+                {busy ? (
+                  <ActivityIndicator size="small" color="#FF9A9A" />
+                ) : (
+                  <Text className="text-[12px] font-extrabold tracking-[0.2px] text-app-danger">Eliminar</Text>
+                )}
+              </View>
             )}
           </Pressable>
         </View>
       </View>
-    </Animated.View>
+    </AnimatedView>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    gap: 14,
-    padding: 14,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(47, 214, 139, 0.18)',
-    backgroundColor: 'rgba(8, 26, 43, 0.97)',
-    overflow: 'hidden',
-    shadowColor: palette.blueGlow,
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
-  cardGlow: {
-    position: 'absolute',
-    right: -30,
-    top: -40,
-    width: 140,
-    height: 140,
-    borderRadius: 999,
-    backgroundColor: 'rgba(18, 104, 168, 0.16)',
-  },
-  cardAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 18,
-    bottom: 18,
-    width: 3,
-    borderRadius: 999,
-    backgroundColor: palette.green,
-    opacity: 0.85,
-  },
-  imageWrap: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  imageRing: {
-    padding: 2,
-    borderRadius: 18,
-    backgroundColor: 'rgba(47, 214, 139, 0.22)',
-  },
-  imageBox: {
-    width: 94,
-    height: 94,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(168, 242, 201, 0.18)',
-    backgroundColor: palette.navySoft,
-  },
-  image: { width: '100%', height: '100%' },
-  imageFallback: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.navy,
-  },
-  imageFallbackIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: palette.navyLine,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(12, 34, 54, 0.9)',
-  },
-  imageFallbackText: { color: palette.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
-  pricePill: {
-    maxWidth: 98,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(168, 242, 201, 0.28)',
-    backgroundColor: 'rgba(12, 59, 42, 0.72)',
-  },
-  pricePillText: {
-    color: palette.greenLight,
-    fontSize: 13,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  body: { flex: 1, minWidth: 0, paddingTop: 2 },
-  name: { color: palette.text, fontSize: 16, fontWeight: '800', lineHeight: 21, letterSpacing: -0.2 },
-  metaRow: { marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  stockBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(143, 168, 186, 0.18)',
-    backgroundColor: 'rgba(12, 34, 54, 0.7)',
-  },
-  stockBadgeLow: {
-    borderColor: 'rgba(255, 154, 154, 0.22)',
-    backgroundColor: 'rgba(52, 19, 28, 0.35)',
-  },
-  stockDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: palette.green,
-  },
-  stockDotLow: { backgroundColor: palette.danger },
-  stockText: { color: palette.textMuted, fontSize: 11, fontWeight: '700' },
-  stockTextLow: { color: palette.danger },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  btn: {
-    minHeight: 38,
-    paddingHorizontal: 13,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  editBtn: {
-    flex: 1,
-    borderColor: 'rgba(168, 242, 201, 0.22)',
-    backgroundColor: 'rgba(12, 34, 54, 0.95)',
-  },
-  editPressed: {
-    borderColor: 'rgba(47, 214, 139, 0.55)',
-    backgroundColor: 'rgba(12, 59, 42, 0.45)',
-  },
-  editText: { color: palette.greenLight, fontSize: 12, fontWeight: '800', letterSpacing: 0.2 },
-  deleteBtn: {
-    flex: 1,
-    borderColor: 'rgba(255, 154, 154, 0.22)',
-    backgroundColor: 'rgba(52, 19, 28, 0.38)',
-  },
-  deletePressed: { backgroundColor: palette.dangerBg, borderColor: 'rgba(255, 154, 154, 0.4)' },
-  deleteText: { color: palette.danger, fontSize: 12, fontWeight: '800', letterSpacing: 0.2 },
-  muted: { opacity: 0.55 },
-});

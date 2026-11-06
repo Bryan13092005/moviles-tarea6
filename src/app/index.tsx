@@ -2,7 +2,7 @@ import { Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
-import { LoginScreen, loginPalette } from '@/components/login-screen';
+import { LoginScreen } from '@/components/login-screen';
 import { auth } from '@/features/auth/supabaseAuth';
 
 export default function IndexRoute() {
@@ -34,15 +34,11 @@ export default function IndexRoute() {
   if (checking) {
     return (
       <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: loginPalette.background,
-        }}
+        className="flex-1 items-center justify-center bg-app-bg"
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#050F1A' }}
       >
         <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator color={loginPalette.greenLight} />
+        <ActivityIndicator color="#A8F2C9" />
       </View>
     );
   }

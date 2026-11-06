@@ -1,15 +1,8 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
-import { loginPalette } from '@/components/login-screen';
 import { completeGoogleSignIn } from '@/features/auth/googleAuth';
 import { supabase } from '@/db/supabase';
 
@@ -112,24 +105,31 @@ export default function AuthCallbackRoute() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={styles.screen}>
+      <View
+        className="flex-1 items-center justify-center gap-4 bg-app-bg px-7"
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#050F1A', paddingHorizontal: 28 }}
+      >
         {error ? (
           <>
-            <Text style={styles.title}>No se pudo completar el acceso</Text>
-            <Text style={styles.message}>{error}</Text>
+            <Text className="text-center text-[18px] font-bold text-app-text">
+              No se pudo completar el acceso
+            </Text>
+            <Text className="text-center text-[14px] leading-5 text-app-text-muted">{error}</Text>
             <Pressable
               onPress={() => router.replace('/')}
               accessibilityRole="button"
               accessibilityLabel="Volver al inicio de sesión"
-              style={styles.button}
+              className="mt-2 rounded-[14px] bg-app-green-light px-6 py-3"
             >
-              <Text style={styles.buttonText}>Volver</Text>
+              <Text className="text-[14px] font-bold text-app-green-deep">Volver</Text>
             </Pressable>
           </>
         ) : (
           <>
-            <ActivityIndicator color={loginPalette.greenLight} />
-            <Text style={styles.message}>Completando el inicio de sesión…</Text>
+            <ActivityIndicator color="#A8F2C9" />
+            <Text className="text-center text-[14px] leading-5 text-app-text-muted">
+              Completando el inicio de sesión…
+            </Text>
             {!busy ? null : null}
           </>
         )}
@@ -137,38 +137,3 @@ export default function AuthCallbackRoute() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    paddingHorizontal: 28,
-    backgroundColor: loginPalette.background,
-  },
-  title: {
-    color: loginPalette.text,
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  message: {
-    color: loginPalette.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
-  button: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: loginPalette.greenLight,
-  },
-  buttonText: {
-    color: loginPalette.greenDeep,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-});

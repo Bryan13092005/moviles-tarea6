@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   RefreshControl,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -15,7 +14,6 @@ import {
 
 import { deleteProducto, getProductos } from '@/api/api.services';
 import { eliminarImagenProducto } from '@/api/storage.services';
-import { palette } from '@/constants/theme';
 import {
   auth,
   EmailAuthProvider,
@@ -30,6 +28,8 @@ import type { Producto } from '@/features/productos/productos.types';
 import { ProductoCard } from './ProductoCard';
 import { ProductoForm } from './ProductoForm';
 import { ProductoModal } from './ProductoModal';
+
+const bottomPad = Platform.OS === 'ios' ? 24 : 14;
 
 export function ProductosCrud() {
   const [items, setItems] = useState<Producto[]>([]);
@@ -199,19 +199,29 @@ export function ProductosCrud() {
 
   const header = useMemo(
     () => (
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.eyebrow}>CATÁLOGO</Text>
-          <Text style={styles.title}>Productos</Text>
-          <Text style={styles.subtitle}>Gestiona tu inventario con imágenes en Supabase.</Text>
+      <View className="flex-row items-start justify-between gap-3 px-5 pt-4 pb-[14px]">
+        <View className="flex-1">
+          <Text className="text-[9px] font-extrabold tracking-[1.8px] text-[#A8F2C9]">CATÁLOGO</Text>
+          <Text className="mt-[6px] text-[28px] font-extrabold tracking-[-0.8px] text-[#F2F8F5]">Productos</Text>
+          <Text className="mt-[6px] text-[13px] leading-[18px] text-[#8FA8BA]">
+            Gestiona tu inventario con imágenes en Supabase.
+          </Text>
         </View>
         <Pressable
           onPress={openCreate}
           accessibilityRole="button"
           accessibilityLabel="Agregar producto"
-          style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
+          className="min-h-[42px]"
         >
-          <Text style={styles.addBtnText}>+ Agregar</Text>
+          {({ pressed }) => (
+            <View
+              className={`min-h-[42px] items-center justify-center rounded-[14px] px-[14px] ${
+                pressed ? 'bg-[#2FD68B]' : 'bg-[#A8F2C9]'
+              }`}
+            >
+              <Text className="text-[13px] font-extrabold text-[#072A1E]">+ Agregar</Text>
+            </View>
+          )}
         </Pressable>
       </View>
     ),
@@ -219,25 +229,28 @@ export function ProductosCrud() {
   );
 
   return (
-    <View style={styles.screen}>
+    <View className="flex-1 bg-[#050F1A]" style={{ flex: 1, backgroundColor: '#050F1A' }}>
       {header}
 
       {error ? (
-        <View style={styles.banner} accessibilityLiveRegion="polite">
-          <Text style={styles.bannerText}>{error}</Text>
+        <View
+          className="mx-5 mb-[10px] rounded-[12px] border border-[rgba(255,154,154,0.32)] bg-[#34131C] px-3 py-[10px]"
+          accessibilityLiveRegion="polite"
+        >
+          <Text className="text-[12px] leading-[17px] text-[#FF9A9A]">{error}</Text>
         </View>
       ) : null}
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={palette.greenLight} />
-          <Text style={styles.mutedText}>Cargando productos…</Text>
+        <View className="flex-1 items-center justify-center gap-[10px]">
+          <ActivityIndicator color="#A8F2C9" />
+          <Text className="text-[13px] text-[#8FA8BA]">Cargando productos…</Text>
         </View>
       ) : (
         <FlatList
           data={items}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12, flexGrow: 1 }}
           renderItem={({ item, index }) => (
             <ProductoCard
               producto={item}
@@ -247,18 +260,20 @@ export function ProductosCrud() {
               index={index}
             />
           )}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={() => <View className="h-3" />}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => load('refresh')}
-              tintColor={palette.greenLight}
+              tintColor="#A8F2C9"
             />
           }
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>Sin productos</Text>
-              <Text style={styles.emptyText}>Usa “Agregar” para crear el primero.</Text>
+            <View className="mt-10 items-center rounded-[20px] border border-[#183850] bg-[rgba(9,27,43,0.6)] p-5">
+              <Text className="text-[16px] font-bold text-[#F2F8F5]">Sin productos</Text>
+              <Text className="mt-[6px] text-center text-[13px] text-[#8FA8BA]">
+                Usa “Agregar” para crear el primero.
+              </Text>
             </View>
           }
         />
@@ -277,105 +292,147 @@ export function ProductosCrud() {
         onClose={() => setPasswordModal(false)}
       >
         {accountError ? (
-          <View style={styles.accountBannerError} accessibilityLiveRegion="polite">
-            <Text style={styles.accountBannerErrorText}>{accountError}</Text>
+          <View
+            className="rounded-[12px] border border-[rgba(255,154,154,0.32)] bg-[#34131C] px-3 py-[10px]"
+            accessibilityLiveRegion="polite"
+          >
+            <Text className="text-[12px] leading-[17px] text-[#FF9A9A]">{accountError}</Text>
           </View>
         ) : null}
-        <View style={styles.field}>
-          <Text style={styles.label}>CONTRASEÑA ACTUAL</Text>
+        <View className="gap-2">
+          <Text className="text-[9px] font-bold tracking-[1.6px] text-[#8FA8BA]">CONTRASEÑA ACTUAL</Text>
           <TextInput
             value={currentPassword}
             onChangeText={setCurrentPassword}
             placeholder="Requerida si iniciaste con correo"
-            placeholderTextColor={palette.textDim}
-            style={styles.input}
+            placeholderTextColor="#5C7A90"
+            className="min-h-[50px] rounded-[14px] border border-[#183850] bg-[#0C2236] px-[14px] text-[14px] text-[#F2F8F5]"
             secureTextEntry
             autoCapitalize="none"
             editable={accountBusy !== 'password'}
-            selectionColor={palette.green}
+            selectionColor="#2FD68B"
             keyboardAppearance="dark"
           />
         </View>
-        <View style={styles.field}>
-          <Text style={styles.label}>NUEVA CONTRASEÑA</Text>
+        <View className="gap-2">
+          <Text className="text-[9px] font-bold tracking-[1.6px] text-[#8FA8BA]">NUEVA CONTRASEÑA</Text>
           <TextInput
             value={newPassword}
             onChangeText={setNewPassword}
             placeholder="Mínimo 6 caracteres"
-            placeholderTextColor={palette.textDim}
-            style={styles.input}
+            placeholderTextColor="#5C7A90"
+            className="min-h-[50px] rounded-[14px] border border-[#183850] bg-[#0C2236] px-[14px] text-[14px] text-[#F2F8F5]"
             secureTextEntry
             autoCapitalize="none"
             editable={accountBusy !== 'password'}
-            selectionColor={palette.green}
+            selectionColor="#2FD68B"
             keyboardAppearance="dark"
           />
         </View>
-        <View style={styles.accountActions}>
+        <View className="mt-1 flex-row gap-[10px]">
           <Pressable
             onPress={() => setPasswordModal(false)}
             disabled={accountBusy === 'password'}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.ghostBtn, pressed && accountBusy !== 'password' && styles.btnPressed, accountBusy === 'password' && styles.btnMuted]}
+            className="min-h-[48px]"
           >
-            <Text style={styles.ghostBtnText}>Cancelar</Text>
+            {({ pressed }) => (
+              <View
+                className={`min-h-[48px] items-center justify-center rounded-[14px] border border-[#183850] px-[14px] ${
+                  pressed && accountBusy !== 'password' ? 'border-[rgba(47,214,139,0.4)]' : ''
+                } ${accountBusy === 'password' ? 'opacity-[0.55]' : ''}`}
+              >
+                <Text className="text-[14px] font-semibold text-[#8FA8BA]">Cancelar</Text>
+              </View>
+            )}
           </Pressable>
           <Pressable
             onPress={handleChangePassword}
             disabled={accountBusy === 'password'}
             accessibilityRole="button"
             accessibilityLabel="Guardar nueva contraseña"
-            style={({ pressed }) => [styles.primaryBtn, pressed && accountBusy !== 'password' && styles.primaryPressed, accountBusy === 'password' && styles.btnMuted]}
+            className="min-h-[48px] flex-1"
           >
-            {accountBusy === 'password' ? (
-              <ActivityIndicator color={palette.greenDeep} />
-            ) : (
-              <Text style={styles.primaryBtnText}>Guardar</Text>
+            {({ pressed }) => (
+              <View
+                className={`min-h-[48px] flex-1 items-center justify-center rounded-[14px] px-[14px] ${
+                  pressed && accountBusy !== 'password' ? 'bg-[#2FD68B]' : 'bg-[#A8F2C9]'
+                } ${accountBusy === 'password' ? 'opacity-[0.55]' : ''}`}
+              >
+                {accountBusy === 'password' ? (
+                  <ActivityIndicator color="#072A1E" />
+                ) : (
+                  <Text className="text-[14px] font-extrabold text-[#072A1E]">Guardar</Text>
+                )}
+              </View>
             )}
           </Pressable>
         </View>
       </ProductoModal>
 
-      <View style={styles.bottomBar}>
+      <View
+        className="gap-[10px] border-t border-[rgba(143,168,186,0.12)] bg-[rgba(8,26,43,0.96)] px-5 pt-[10px]"
+        style={{ paddingBottom: bottomPad }}
+      >
         {accountNotice ? (
-          <View style={styles.accountBannerSuccess} accessibilityLiveRegion="polite">
-            <Text style={styles.accountBannerSuccessText}>{accountNotice}</Text>
+          <View
+            className="rounded-[12px] border border-[rgba(47,214,139,0.32)] bg-[rgba(12,59,42,0.75)] px-3 py-[10px]"
+            accessibilityLiveRegion="polite"
+          >
+            <Text className="text-[12px] leading-[17px] text-[#A8F2C9]">{accountNotice}</Text>
           </View>
         ) : null}
         {accountError && !passwordModal ? (
-          <View style={styles.accountBannerError} accessibilityLiveRegion="polite">
-            <Text style={styles.accountBannerErrorText}>{accountError}</Text>
+          <View
+            className="rounded-[12px] border border-[rgba(255,154,154,0.32)] bg-[#34131C] px-3 py-[10px]"
+            accessibilityLiveRegion="polite"
+          >
+            <Text className="text-[12px] leading-[17px] text-[#FF9A9A]">{accountError}</Text>
           </View>
         ) : null}
-        <View style={styles.bottomActions}>
+        <View className="flex-row gap-[10px]">
           <Pressable
             onPress={openPasswordModal}
             disabled={accountBusy !== null || provider === 'google' || provider === null}
             accessibilityRole="button"
             accessibilityLabel="Cambiar contraseña"
             accessibilityState={{ disabled: accountBusy !== null || provider === 'google' || provider === null }}
-            style={({ pressed }) => [
-              styles.bottomBtn,
-              styles.bottomBtnSecondary,
-              pressed && !accountBusy && provider !== 'google' && provider !== null && styles.btnPressed,
-              (accountBusy || provider === 'google' || provider === null) && styles.btnMuted,
-            ]}
+            className="min-h-[48px] flex-1"
           >
-            <Text style={styles.bottomBtnSecondaryText}>
-              {provider === 'google' ? 'Clave (Google)' : 'Cambiar clave'}
-            </Text>
+            {({ pressed }) => {
+              const disabled = accountBusy !== null || provider === 'google' || provider === null;
+              return (
+                <View
+                  className={`min-h-[48px] flex-1 items-center justify-center rounded-[14px] border border-[#183850] bg-[#0C2236] px-3 ${
+                    pressed && !disabled ? 'border-[rgba(47,214,139,0.4)]' : ''
+                  } ${disabled ? 'opacity-[0.55]' : ''}`}
+                >
+                  <Text className="text-[13px] font-bold text-[#F2F8F5]">
+                    {provider === 'google' ? 'Clave (Google)' : 'Cambiar clave'}
+                  </Text>
+                </View>
+              );
+            }}
           </Pressable>
           <Pressable
             onPress={handleSignOut}
             disabled={accountBusy !== null}
             accessibilityRole="button"
             accessibilityLabel="Cerrar sesión"
-            style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnDanger, pressed && !accountBusy && styles.bottomBtnDangerPressed, accountBusy && styles.btnMuted]}
+            className="min-h-[48px] flex-1"
           >
-            {accountBusy === 'signout' ? (
-              <ActivityIndicator color={palette.danger} />
-            ) : (
-              <Text style={styles.bottomBtnDangerText}>Cerrar sesión</Text>
+            {({ pressed }) => (
+              <View
+                className={`min-h-[48px] flex-1 items-center justify-center rounded-[14px] border border-[rgba(255,154,154,0.28)] bg-[rgba(52,19,28,0.45)] px-3 ${
+                  pressed && !accountBusy ? 'bg-[#34131C]' : ''
+                } ${accountBusy ? 'opacity-[0.55]' : ''}`}
+              >
+                {accountBusy === 'signout' ? (
+                  <ActivityIndicator color="#FF9A9A" />
+                ) : (
+                  <Text className="text-[13px] font-bold text-[#FF9A9A]">Cerrar sesión</Text>
+                )}
+              </View>
             )}
           </Pressable>
         </View>
@@ -383,134 +440,3 @@ export function ProductosCrud() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: palette.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 14,
-  },
-  headerText: { flex: 1 },
-  eyebrow: { color: palette.greenLight, fontSize: 9, fontWeight: '800', letterSpacing: 1.8 },
-  title: { marginTop: 6, color: palette.text, fontSize: 28, fontWeight: '800', letterSpacing: -0.8 },
-  subtitle: { marginTop: 6, color: palette.textMuted, fontSize: 13, lineHeight: 18 },
-  addBtn: {
-    minHeight: 42,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: palette.greenLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addBtnPressed: { backgroundColor: palette.green },
-  addBtnText: { color: palette.greenDeep, fontSize: 13, fontWeight: '800' },
-  banner: {
-    marginHorizontal: 20,
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 154, 154, 0.32)',
-    backgroundColor: palette.dangerBg,
-  },
-  bannerText: { color: palette.danger, fontSize: 12, lineHeight: 17 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  mutedText: { color: palette.textMuted, fontSize: 13 },
-  listContent: { paddingHorizontal: 20, paddingBottom: 12, flexGrow: 1 },
-  separator: { height: 12 },
-  empty: {
-    marginTop: 40,
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: palette.navyLine,
-    backgroundColor: 'rgba(9, 27, 43, 0.6)',
-    alignItems: 'center',
-  },
-  emptyTitle: { color: palette.text, fontSize: 16, fontWeight: '700' },
-  emptyText: { marginTop: 6, color: palette.textMuted, fontSize: 13, textAlign: 'center' },
-  bottomBar: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(143, 168, 186, 0.12)',
-    backgroundColor: 'rgba(8, 26, 43, 0.96)',
-    gap: 10,
-  },
-  bottomActions: { flexDirection: 'row', gap: 10 },
-  bottomBtn: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    paddingHorizontal: 12,
-  },
-  bottomBtnSecondary: { borderColor: palette.navyLine, backgroundColor: palette.navySoft },
-  bottomBtnSecondaryText: { color: palette.text, fontSize: 13, fontWeight: '700' },
-  bottomBtnDanger: { borderColor: 'rgba(255, 154, 154, 0.28)', backgroundColor: 'rgba(52, 19, 28, 0.45)' },
-  bottomBtnDangerPressed: { backgroundColor: palette.dangerBg },
-  bottomBtnDangerText: { color: palette.danger, fontSize: 13, fontWeight: '700' },
-  btnPressed: { borderColor: 'rgba(47, 214, 139, 0.4)' },
-  btnMuted: { opacity: 0.55 },
-  field: { gap: 8 },
-  label: { color: palette.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.6 },
-  input: {
-    minHeight: 50,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: palette.navyLine,
-    backgroundColor: palette.navySoft,
-    color: palette.text,
-    fontSize: 14,
-  },
-  accountActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  ghostBtn: {
-    minHeight: 48,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: palette.navyLine,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ghostBtnText: { color: palette.textMuted, fontSize: 14, fontWeight: '600' },
-  primaryBtn: {
-    flex: 1,
-    minHeight: 48,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: palette.greenLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryPressed: { backgroundColor: palette.green },
-  primaryBtnText: { color: palette.greenDeep, fontSize: 14, fontWeight: '800' },
-  accountBannerError: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 154, 154, 0.32)',
-    backgroundColor: palette.dangerBg,
-  },
-  accountBannerErrorText: { color: palette.danger, fontSize: 12, lineHeight: 17 },
-  accountBannerSuccess: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(47, 214, 139, 0.32)',
-    backgroundColor: 'rgba(12, 59, 42, 0.75)',
-  },
-  accountBannerSuccessText: { color: palette.greenLight, fontSize: 12, lineHeight: 17 },
-});

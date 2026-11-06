@@ -1,13 +1,5 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, TextInput, View } from 'react-native';
 import type { ImagePickerAsset } from 'expo-image-picker';
 
 import { createProducto, updateProducto } from '@/api/api.services';
@@ -16,7 +8,6 @@ import {
   tomarFotoProducto,
 } from '@/api/productos.imagen.services';
 import { eliminarImagenProducto, subirImagenProducto } from '@/api/storage.services';
-import { palette } from '@/constants/theme';
 import type { Producto } from '@/features/productos/productos.types';
 
 type Values = {
@@ -42,7 +33,7 @@ function toValues(producto?: Producto | null): Values {
 }
 
 function Label({ children }: { children: string }) {
-  return <Text style={styles.label}>{children}</Text>;
+  return <Text className="text-[9px] font-bold tracking-[1.6px] text-app-text-muted">{children}</Text>;
 }
 
 export function ProductoForm({ producto, onSaved, onCancel }: Props) {
@@ -129,203 +120,165 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
   };
 
   return (
-    <View style={styles.form}>
+    <View className="gap-3.5">
       {error ? (
-        <View style={styles.banner} accessibilityLiveRegion="polite">
-          <Text style={styles.bannerText}>{error}</Text>
+        <View
+          className="rounded-xlder border-[rgba(255,154,154,0.32)] bg-app-danger-bg px-3 py-2.5"
+          accessibilityLiveRegion="polite"
+        >
+          <Text className="text-[12px] leading-4.25 text-app-danger">{error}</Text>
         </View>
       ) : null}
 
-      <View style={styles.field}>
+      <View className="gap-2">
         <Label>IMAGEN *</Label>
-        <View style={styles.imageRow}>
-          <View style={styles.previewBox}>
+        <View className="flex-row items-center gap-3">
+          <View className="h-22 w-22 items-center justify-center overflow-hidden rounded-2xl border border-app-navy-line bg-app-bg">
             {previewUri ? (
-              <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
+              <Image source={{ uri: previewUri }} className="h-full w-full" resizeMode="cover" />
             ) : (
-              <Text style={styles.previewHint}>Sin imagen</Text>
+              <Text className="text-[11px] text-app-text-dim">Sin imagen</Text>
             )}
           </View>
-          <View style={styles.imageActions}>
+          <View className="flex-1 gap-2">
             <Pressable
               onPress={() => pick('library')}
               disabled={busy}
               accessibilityRole="button"
-              style={({ pressed }) => [styles.secondaryBtn, pressed && !busy && styles.secondaryPressed, busy && styles.muted]}
+              className="min-h-10"
             >
-              <Text style={styles.secondaryBtnText}>Galería</Text>
+              {({ pressed }) => (
+                <View
+                  className={`min-h-[40px] items-center justify-center rounded-[12px] border border-[#183850] bg-[#0C2236] px-[14px] ${
+                    pressed && !busy ? 'border-[rgba(47,214,139,0.4)]' : ''
+                  } ${busy ? 'opacity-[0.55]' : ''}`}
+                >
+                  <Text className="text-[13px] font-semibold text-[#F2F8F5]">Galería</Text>
+                </View>
+              )}
             </Pressable>
             <Pressable
               onPress={() => pick('camera')}
               disabled={busy}
               accessibilityRole="button"
-              style={({ pressed }) => [styles.secondaryBtn, pressed && !busy && styles.secondaryPressed, busy && styles.muted]}
+              className="min-h-[40px]"
             >
-              <Text style={styles.secondaryBtnText}>Cámara</Text>
+              {({ pressed }) => (
+                <View
+                  className={`min-h-[40px] items-center justify-center rounded-[12px] border border-[#183850] bg-[#0C2236] px-[14px] ${
+                    pressed && !busy ? 'border-[rgba(47,214,139,0.4)]' : ''
+                  } ${busy ? 'opacity-[0.55]' : ''}`}
+                >
+                  <Text className="text-[13px] font-semibold text-[#F2F8F5]">Cámara</Text>
+                </View>
+              )}
             </Pressable>
-            {imagen ? <Text style={styles.imageNote}>Nueva imagen seleccionada</Text> : null}
+            {imagen ? <Text className="text-[11px] text-[#A8F2C9]">Nueva imagen seleccionada</Text> : null}
           </View>
         </View>
       </View>
 
-      <View style={styles.field}>
+      <View className="gap-2">
         <Label>NOMBRE *</Label>
         <TextInput
           value={values.nombre}
           onChangeText={set('nombre')}
           placeholder="Nombre del producto"
-          placeholderTextColor={palette.textDim}
-          style={styles.input}
+          placeholderTextColor="#5C7A90"
+          className="min-h-[50px] rounded-[14px] border border-[#183850] bg-[#0C2236] px-[14px] py-3 text-[14px] text-[#F2F8F5]"
           editable={!busy}
-          selectionColor={palette.green}
+          selectionColor="#2FD68B"
           keyboardAppearance="dark"
         />
       </View>
 
-      <View style={styles.row}>
-        <View style={[styles.field, styles.flex1]}>
+      <View className="flex-row gap-3">
+        <View className="flex-1 gap-2">
           <Label>PRECIO *</Label>
           <TextInput
             value={values.precio}
             onChangeText={set('precio')}
             placeholder="0.00"
-            placeholderTextColor={palette.textDim}
-            style={styles.input}
+            placeholderTextColor="#5C7A90"
+            className="min-h-[50px] rounded-[14px] border border-[#183850] bg-[#0C2236] px-[14px] py-3 text-[14px] text-[#F2F8F5]"
             editable={!busy}
             keyboardType="decimal-pad"
-            selectionColor={palette.green}
+            selectionColor="#2FD68B"
             keyboardAppearance="dark"
           />
         </View>
-        <View style={[styles.field, styles.flex1]}>
+        <View className="flex-1 gap-2">
           <Label>STOCK *</Label>
           <TextInput
             value={values.stock}
             onChangeText={set('stock')}
             placeholder="0"
-            placeholderTextColor={palette.textDim}
-            style={styles.input}
+            placeholderTextColor="#5C7A90"
+            className="min-h-[50px] rounded-[14px] border border-[#183850] bg-[#0C2236] px-[14px] py-3 text-[14px] text-[#F2F8F5]"
             editable={!busy}
             keyboardType="number-pad"
-            selectionColor={palette.green}
+            selectionColor="#2FD68B"
             keyboardAppearance="dark"
           />
         </View>
       </View>
 
-      <View style={styles.field}>
+      <View className="gap-2">
         <Label>DESCRIPCIÓN</Label>
         <TextInput
           value={values.descripcion}
           onChangeText={set('descripcion')}
           placeholder="Descripción breve"
-          placeholderTextColor={palette.textDim}
-          style={[styles.input, styles.textarea]}
+          placeholderTextColor="#5C7A90"
+          className="min-h-[90px] rounded-[14px] border border-[#183850] bg-[#0C2236] px-[14px] py-3 text-[14px] text-[#F2F8F5]"
+          style={{ textAlignVertical: 'top' }}
           editable={!busy}
           multiline
-          selectionColor={palette.green}
+          selectionColor="#2FD68B"
           keyboardAppearance="dark"
         />
       </View>
 
-      <View style={styles.actions}>
+      <View className="mt-1 flex-row gap-[10px]">
         <Pressable
           onPress={onCancel}
           disabled={busy}
           accessibilityRole="button"
-          style={({ pressed }) => [styles.ghostBtn, pressed && !busy && styles.secondaryPressed, busy && styles.muted]}
+          className="min-h-[50px]"
         >
-          <Text style={styles.ghostBtnText}>Cancelar</Text>
+          {({ pressed }) => (
+            <View
+              className={`min-h-[50px] items-center justify-center rounded-[15px] border border-[#183850] px-[14px] ${
+                pressed && !busy ? 'border-[rgba(47,214,139,0.4)]' : ''
+              } ${busy ? 'opacity-[0.55]' : ''}`}
+            >
+              <Text className="text-[14px] font-semibold text-[#8FA8BA]">Cancelar</Text>
+            </View>
+          )}
         </Pressable>
         <Pressable
           onPress={submit}
           disabled={busy}
           accessibilityRole="button"
-          style={({ pressed }) => [styles.primaryBtn, pressed && !busy && styles.primaryPressed, busy && styles.muted]}
+          className="min-h-[50px] flex-1"
         >
-          {busy ? <ActivityIndicator color={palette.greenDeep} /> : <Text style={styles.primaryBtnText}>{editing ? 'Guardar cambios' : 'Crear producto'}</Text>}
+          {({ pressed }) => (
+            <View
+              className={`min-h-[50px] flex-1 items-center justify-center rounded-[15px] px-[14px] ${
+                pressed && !busy ? 'bg-[#2FD68B]' : 'bg-[#A8F2C9]'
+              } ${busy ? 'opacity-[0.55]' : ''}`}
+            >
+              {busy ? (
+                <ActivityIndicator color="#072A1E" />
+              ) : (
+                <Text className="text-[14px] font-extrabold text-[#072A1E]">
+                  {editing ? 'Guardar cambios' : 'Crear producto'}
+                </Text>
+              )}
+            </View>
+          )}
         </Pressable>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  form: { gap: 14 },
-  field: { gap: 8 },
-  label: { color: palette.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.6 },
-  input: {
-    minHeight: 50,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: palette.navyLine,
-    backgroundColor: palette.navySoft,
-    color: palette.text,
-    fontSize: 14,
-  },
-  textarea: { minHeight: 90, textAlignVertical: 'top' },
-  row: { flexDirection: 'row', gap: 12 },
-  flex1: { flex: 1 },
-  imageRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  previewBox: {
-    width: 88,
-    height: 88,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: palette.navyLine,
-    backgroundColor: palette.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  preview: { width: '100%', height: '100%' },
-  previewHint: { color: palette.textDim, fontSize: 11 },
-  imageActions: { flex: 1, gap: 8 },
-  imageNote: { color: palette.greenLight, fontSize: 11 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  primaryBtn: {
-    flex: 1,
-    minHeight: 50,
-    borderRadius: 15,
-    backgroundColor: palette.greenLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-  },
-  primaryPressed: { backgroundColor: palette.green },
-  primaryBtnText: { color: palette.greenDeep, fontSize: 14, fontWeight: '800' },
-  secondaryBtn: {
-    minHeight: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: palette.navyLine,
-    backgroundColor: palette.navySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-  },
-  secondaryPressed: { borderColor: 'rgba(47, 214, 139, 0.4)' },
-  secondaryBtnText: { color: palette.text, fontSize: 13, fontWeight: '600' },
-  ghostBtn: {
-    minHeight: 50,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: palette.navyLine,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-  },
-  ghostBtnText: { color: palette.textMuted, fontSize: 14, fontWeight: '600' },
-  muted: { opacity: 0.55 },
-  banner: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 154, 154, 0.32)',
-    backgroundColor: palette.dangerBg,
-  },
-  bannerText: { color: palette.danger, fontSize: 12, lineHeight: 17 },
-});
