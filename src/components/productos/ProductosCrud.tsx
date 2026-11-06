@@ -25,6 +25,11 @@ import {
 } from '@/features/auth/supabaseAuth';
 import type { Producto } from '@/features/productos/productos.types';
 
+import { LottieButton } from '@/components/ui/LottieButton';
+import { obtenerAnimacion } from '@/components/ui/animaciones';
+import LottieView from 'lottie-react-native';
+import { useAlertSystem } from '@/features/alerts/useAlertSystem';
+
 import { ProductoCard } from './ProductoCard';
 import { ProductoForm } from './ProductoForm';
 import { ProductoModal } from './ProductoModal';
@@ -32,10 +37,11 @@ import { ProductoModal } from './ProductoModal';
 const bottomPad = Platform.OS === 'ios' ? 24 : 14;
 
 export function ProductosCrud() {
+  const { alertSuccess, alertError, showProductAddedAlert, showProductDeletedAlert, showProductUpdatedAlert } = useAlertSystem();
+  
   const [items, setItems] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<{ open: boolean; producto: Producto | null }>({
     open: false,
     producto: null,
@@ -46,33 +52,33 @@ export function ProductosCrud() {
   const [passwordModal, setPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [accountError, setAccountError] = useState<string | null>(null);
-  const [accountNotice, setAccountNotice] = useState<string | null>(null);
 
   const load = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') setRefreshing(true);
     else setLoading(true);
-    setError(null);
     try {
       const data = await getProductos();
       setItems(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudieron cargar los productos.');
+      const errorMsg = e instanceof Error ? e.message : 'No se pudieron cargar los productos.';
+      alertError(errorMsg, 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [alertError]);
 
   useEffect(() => {
     let active = true;
     const run = async () => {
-      setError(null);
       try {
         const data = await getProductos();
         if (active) setItems(data);
       } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : 'No se pudieron cargar los productos.');
+        if (active) {
+          const errorMsg = e instanceof Error ? e.message : 'No se pudieron cargar los productos.';
+          alertError(errorMsg, 'error');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -86,7 +92,7 @@ export function ProductosCrud() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [alertError]);
 
   const openCreate = () => setModal({ open: true, producto: null });
   const openEdit = (producto: Producto) => setModal({ open: true, producto });
@@ -94,12 +100,9 @@ export function ProductosCrud() {
 
   const openPasswordModal = () => {
     if (provider === 'google') {
-      setAccountError('Las cuentas de Google no usan contraseña en esta app.');
-      setAccountNotice(null);
+      alertError('Las cuentas de Google no usan contraseña en esta app.', 'error');
       return;
     }
-    setAccountError(null);
-    setAccountNotice(null);
     setCurrentPassword('');
     setNewPassword('');
     setPasswordModal(true);
@@ -107,14 +110,13 @@ export function ProductosCrud() {
 
   const handleSignOut = async () => {
     if (accountBusy) return;
-    setAccountError(null);
-    setAccountNotice(null);
     setAccountBusy('signout');
     try {
       await signOut(auth);
       router.replace('/');
     } catch (e) {
-      setAccountError(e instanceof Error ? e.message : 'No se pudo cerrar sesión.');
+      const errorMsg = e instanceof Error ? e.message : 'No se pudo cerrar sesión.';
+      alertError(errorMsg, 'error');
     } finally {
       setAccountBusy(null);
     }
@@ -122,11 +124,9 @@ export function ProductosCrud() {
 
   const handleChangePassword = async () => {
     if (accountBusy) return;
-    setAccountError(null);
-    setAccountNotice(null);
 
     if (newPassword.length < 6) {
-      setAccountError('La nueva contraseña debe tener al menos 6 caracteres.');
+      alertError('La nueva contraseña debe tener al menos 6 caracteres.', 'invalidCredentials');
       return;
     }
 
@@ -145,15 +145,16 @@ export function ProductosCrud() {
       setPasswordModal(false);
       setCurrentPassword('');
       setNewPassword('');
-      setAccountNotice('Contraseña actualizada correctamente.');
+      alertSuccess('Contraseña actualizada correctamente.', 'changeanresetpassword', 3000);
     } catch (e) {
-      setAccountError(e instanceof Error ? e.message : 'No se pudo cambiar la contraseña.');
+      const errorMsg = e instanceof Error ? e.message : 'No se pudo cambiar la contraseña.';
+      alertError(errorMsg, 'error');
     } finally {
       setAccountBusy(null);
     }
   };
 
-  const onSaved = (saved: Producto) => {
+  const onSaved = (saved: Producto, isNew: boolean = false) => {
     setItems((prev) => {
       const idx = prev.findIndex((p) => p.id === saved.id);
       if (idx === -1) return [saved, ...prev];
@@ -162,6 +163,11 @@ export function ProductosCrud() {
       return next;
     });
     closeModal();
+    if (isNew) {
+      showProductAddedAlert(saved.nombre ?? 'Producto', false);
+    } else {
+      showProductUpdatedAlert(saved.nombre ?? 'Producto', false);
+    }
   };
 
   const confirmDelete = (producto: Producto) => {
@@ -170,15 +176,16 @@ export function ProductosCrud() {
 
     const run = async () => {
       setDeletingId(producto.id);
-      setError(null);
       try {
         await deleteProducto(producto.id);
         if (producto.img) {
           await eliminarImagenProducto(producto.img).catch(() => undefined);
         }
         setItems((prev) => prev.filter((p) => p.id !== producto.id));
+        showProductDeletedAlert(producto.nombre ?? 'Producto', false);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'No se pudo eliminar el producto.');
+        const errorMsg = e instanceof Error ? e.message : 'No se pudo eliminar el producto.';
+        alertError(errorMsg, 'error');
       } finally {
         setDeletingId(null);
       }
@@ -232,18 +239,14 @@ export function ProductosCrud() {
     <View className="flex-1 bg-[#050F1A]" style={{ flex: 1, backgroundColor: '#050F1A' }}>
       {header}
 
-      {error ? (
-        <View
-          className="mx-5 mb-[10px] rounded-[12px] border border-[rgba(255,154,154,0.32)] bg-[#34131C] px-3 py-[10px]"
-          accessibilityLiveRegion="polite"
-        >
-          <Text className="text-[12px] leading-[17px] text-[#FF9A9A]">{error}</Text>
-        </View>
-      ) : null}
-
       {loading ? (
         <View className="flex-1 items-center justify-center gap-[10px]">
-          <ActivityIndicator color="#A8F2C9" />
+          <LottieView
+            source={obtenerAnimacion('tienda')}
+            autoPlay
+            loop
+            style={{ width: 140, height: 140 }}
+          />
           <Text className="text-[13px] text-[#8FA8BA]">Cargando productos…</Text>
         </View>
       ) : (
@@ -291,14 +294,6 @@ export function ProductosCrud() {
         title="Cambiar contraseña"
         onClose={() => setPasswordModal(false)}
       >
-        {accountError ? (
-          <View
-            className="rounded-[12px] border border-[rgba(255,154,154,0.32)] bg-[#34131C] px-3 py-[10px]"
-            accessibilityLiveRegion="polite"
-          >
-            <Text className="text-[12px] leading-[17px] text-[#FF9A9A]">{accountError}</Text>
-          </View>
-        ) : null}
         <View className="gap-2">
           <Text className="text-[9px] font-bold tracking-[1.6px] text-[#8FA8BA]">CONTRASEÑA ACTUAL</Text>
           <TextInput
@@ -374,22 +369,6 @@ export function ProductosCrud() {
         className="gap-[10px] border-t border-[rgba(143,168,186,0.12)] bg-[rgba(8,26,43,0.96)] px-5 pt-[10px]"
         style={{ paddingBottom: bottomPad }}
       >
-        {accountNotice ? (
-          <View
-            className="rounded-[12px] border border-[rgba(47,214,139,0.32)] bg-[rgba(12,59,42,0.75)] px-3 py-[10px]"
-            accessibilityLiveRegion="polite"
-          >
-            <Text className="text-[12px] leading-[17px] text-[#A8F2C9]">{accountNotice}</Text>
-          </View>
-        ) : null}
-        {accountError && !passwordModal ? (
-          <View
-            className="rounded-[12px] border border-[rgba(255,154,154,0.32)] bg-[#34131C] px-3 py-[10px]"
-            accessibilityLiveRegion="polite"
-          >
-            <Text className="text-[12px] leading-[17px] text-[#FF9A9A]">{accountError}</Text>
-          </View>
-        ) : null}
         <View className="flex-row gap-[10px]">
           <Pressable
             onPress={openPasswordModal}
@@ -414,27 +393,15 @@ export function ProductosCrud() {
               );
             }}
           </Pressable>
-          <Pressable
+          <LottieButton
+            animation="loginandlogout"
+            label={accountBusy === 'signout' ? 'Cerrando…' : 'Cerrar sesión'}
             onPress={handleSignOut}
+            variant="peligro"
+            busy={accountBusy === 'signout'}
             disabled={accountBusy !== null}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar sesión"
             className="min-h-[48px] flex-1"
-          >
-            {({ pressed }) => (
-              <View
-                className={`min-h-[48px] flex-1 items-center justify-center rounded-[14px] border border-[rgba(255,154,154,0.28)] bg-[rgba(52,19,28,0.45)] px-3 ${
-                  pressed && !accountBusy ? 'bg-[#34131C]' : ''
-                } ${accountBusy ? 'opacity-[0.55]' : ''}`}
-              >
-                {accountBusy === 'signout' ? (
-                  <ActivityIndicator color="#FF9A9A" />
-                ) : (
-                  <Text className="text-[13px] font-bold text-[#FF9A9A]">Cerrar sesión</Text>
-                )}
-              </View>
-            )}
-          </Pressable>
+          />
         </View>
       </View>
     </View>

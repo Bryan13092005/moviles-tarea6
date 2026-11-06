@@ -1,7 +1,10 @@
+import { useState, useRef } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { withUniwind } from 'uniwind';
+import LottieView from 'lottie-react-native';
 
+import { obtenerAnimacion } from '@/components/ui/animaciones';
 import type { Producto } from '@/features/productos/productos.types';
 
 const AnimatedView = withUniwind(Animated.View);
@@ -37,6 +40,8 @@ const cardShadow = {
 
 export function ProductoCard({ producto, onEdit, onDelete, busy, index = 0 }: Props) {
   const lowStock = producto.stock != null && producto.stock <= 5;
+  const [mostrarEdit, setMostrarEdit] = useState(false);
+  const lottieEdit = useRef<LottieView>(null);
 
   return (
     <AnimatedView
@@ -103,7 +108,13 @@ export function ProductoCard({ producto, onEdit, onDelete, busy, index = 0 }: Pr
 
         <View className="mt-3 flex-row gap-2">
           <Pressable
-            onPress={() => onEdit(producto)}
+            onPress={() => {
+              onEdit(producto);
+              lottieEdit.current?.reset();
+              lottieEdit.current?.play();
+              setMostrarEdit(true);
+              setTimeout(() => setMostrarEdit(false), 700);
+            }}
             disabled={busy}
             accessibilityRole="button"
             accessibilityLabel={`Actualizar ${producto.nombre ?? 'producto'}`}
@@ -117,7 +128,18 @@ export function ProductoCard({ producto, onEdit, onDelete, busy, index = 0 }: Pr
                     : 'border-[rgba(168,242,201,0.22)] bg-[rgba(12,34,54,0.95)]'
                 } ${busy ? 'opacity-[0.55]' : ''}`}
               >
-                <Text className="text-[12px] font-extrabold tracking-[0.2px] text-app-green-light">Actualizar</Text>
+                <Text className="text-[12px] font-extrabold tracking-[0.2px] text-app-green-light">
+                  Actualizar
+                </Text>
+                {mostrarEdit && (
+                  <LottieView
+                    ref={lottieEdit}
+                    source={obtenerAnimacion('edit')}
+                    autoPlay
+                    loop={false}
+                    style={{ width: 14, height: 14, marginLeft: 6 }}
+                  />
+                )}
               </View>
             )}
           </Pressable>

@@ -1,7 +1,9 @@
 import { Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
+import LottieView from 'lottie-react-native';
 
+import { obtenerAnimacion } from '@/components/ui/animaciones';
 import { LoginScreen } from '@/components/login-screen';
 import { auth } from '@/features/auth/supabaseAuth';
 
@@ -38,7 +40,12 @@ export default function IndexRoute() {
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#050F1A' }}
       >
         <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator color="#A8F2C9" />
+        <LottieView
+          source={obtenerAnimacion('tienda')}
+          autoPlay
+          loop
+          style={{ width: 140, height: 140 }}
+        />
       </View>
     );
   }

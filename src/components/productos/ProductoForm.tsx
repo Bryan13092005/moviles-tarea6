@@ -1,14 +1,24 @@
-import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text, TextInput, View } from 'react-native';
-import type { ImagePickerAsset } from 'expo-image-picker';
+import type { ImagePickerAsset } from "expo-image-picker";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
-import { createProducto, updateProducto } from '@/api/api.services';
+import { createProducto, updateProducto } from "@/api/api.services";
 import {
   seleccionarImagenProducto,
   tomarFotoProducto,
-} from '@/api/productos.imagen.services';
-import { eliminarImagenProducto, subirImagenProducto } from '@/api/storage.services';
-import type { Producto } from '@/features/productos/productos.types';
+} from "@/api/productos.imagen.services";
+import {
+  eliminarImagenProducto,
+  subirImagenProducto,
+} from "@/api/storage.services";
+import type { Producto } from "@/features/productos/productos.types";
 
 type Values = {
   nombre: string;
@@ -19,21 +29,25 @@ type Values = {
 
 type Props = {
   producto?: Producto | null;
-  onSaved: (producto: Producto) => void;
+  onSaved: (producto: Producto, isNew?: boolean) => void;
   onCancel: () => void;
 };
 
 function toValues(producto?: Producto | null): Values {
   return {
-    nombre: producto?.nombre ?? '',
-    precio: producto?.precio != null ? String(producto.precio) : '',
-    stock: producto?.stock != null ? String(producto.stock) : '',
-    descripcion: producto?.descripcion ?? '',
+    nombre: producto?.nombre ?? "",
+    precio: producto?.precio != null ? String(producto.precio) : "",
+    stock: producto?.stock != null ? String(producto.stock) : "",
+    descripcion: producto?.descripcion ?? "",
   };
 }
 
 function Label({ children }: { children: string }) {
-  return <Text className="text-[9px] font-bold tracking-[1.6px] text-app-text-muted">{children}</Text>;
+  return (
+    <Text className="text-[9px] font-bold tracking-[1.6px] text-app-text-muted">
+      {children}
+    </Text>
+  );
 }
 
 export function ProductoForm({ producto, onSaved, onCancel }: Props) {
@@ -48,15 +62,19 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
   const set = (key: keyof Values) => (text: string) =>
     setValues((v) => ({ ...v, [key]: text }));
 
-  const pick = async (mode: 'library' | 'camera') => {
+  const pick = async (mode: "library" | "camera") => {
     if (busy) return;
     setError(null);
     try {
       const asset =
-        mode === 'camera' ? await tomarFotoProducto() : await seleccionarImagenProducto();
+        mode === "camera"
+          ? await tomarFotoProducto()
+          : await seleccionarImagenProducto();
       if (asset) setImagen(asset);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo seleccionar la imagen.');
+      setError(
+        e instanceof Error ? e.message : "No se pudo seleccionar la imagen.",
+      );
     }
   };
 
@@ -66,17 +84,19 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
 
     const nombre = values.nombre.trim();
     const precioNum = values.precio.trim() ? Number(values.precio) : null;
-    const stockNum = values.stock.trim() ? Number.parseInt(values.stock, 10) : null;
+    const stockNum = values.stock.trim()
+      ? Number.parseInt(values.stock, 10)
+      : null;
 
-    if (!nombre) return setError('El nombre es obligatorio.');
+    if (!nombre) return setError("El nombre es obligatorio.");
     if (precioNum == null || Number.isNaN(precioNum) || precioNum < 0)
-      return setError('Ingresa un precio válido.');
+      return setError("Ingresa un precio válido.");
     if (stockNum == null || Number.isNaN(stockNum) || stockNum < 0)
-      return setError('Ingresa un stock válido.');
+      return setError("Ingresa un stock válido.");
     if (!editing && !imagen)
-      return setError('La imagen es obligatoria para crear un producto.');
+      return setError("La imagen es obligatoria para crear un producto.");
     if (editing && !imagen && !producto?.img)
-      return setError('La imagen es obligatoria.');
+      return setError("La imagen es obligatoria.");
 
     setBusy(true);
     try {
@@ -99,7 +119,10 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
       } else if (imagen) {
         const subida = await subirImagenProducto(imagen);
         try {
-          saved = await updateProducto(producto!.id, { ...datos, img: subida.url });
+          saved = await updateProducto(producto!.id, {
+            ...datos,
+            img: subida.url,
+          });
           if (producto?.img) {
             await eliminarImagenProducto(producto.img).catch(() => undefined);
           }
@@ -111,9 +134,11 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
         saved = await updateProducto(producto!.id, datos);
       }
 
-      onSaved(saved);
+      onSaved(saved, !editing);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo guardar el producto.');
+      setError(
+        e instanceof Error ? e.message : "No se pudo guardar el producto.",
+      );
     } finally {
       setBusy(false);
     }
@@ -126,7 +151,9 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
           className="rounded-xlder border-[rgba(255,154,154,0.32)] bg-app-danger-bg px-3 py-2.5"
           accessibilityLiveRegion="polite"
         >
-          <Text className="text-[12px] leading-4.25 text-app-danger">{error}</Text>
+          <Text className="text-[12px] leading-4.25 text-app-danger">
+            {error}
+          </Text>
         </View>
       ) : null}
 
@@ -135,45 +162,57 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
         <View className="flex-row items-center gap-3">
           <View className="h-22 w-22 items-center justify-center overflow-hidden rounded-2xl border border-app-navy-line bg-app-bg">
             {previewUri ? (
-              <Image source={{ uri: previewUri }} className="h-full w-full" resizeMode="cover" />
+              <Image
+                source={{ uri: previewUri }}
+                className="h-full w-full"
+                resizeMode="cover"
+              />
             ) : (
               <Text className="text-[11px] text-app-text-dim">Sin imagen</Text>
             )}
           </View>
           <View className="flex-1 gap-2">
             <Pressable
-              onPress={() => pick('library')}
+              onPress={() => pick("library")}
               disabled={busy}
               accessibilityRole="button"
               className="min-h-10"
             >
               {({ pressed }) => (
                 <View
-                  className={`min-h-[40px] items-center justify-center rounded-[12px] border border-[#183850] bg-[#0C2236] px-[14px] ${
+                  className={`min-h-10 items-center justify-center rounded-xlder border-app-navy-line bg-app-navy-softsoft px-3.5
                     pressed && !busy ? 'border-[rgba(47,214,139,0.4)]' : ''
-                  } ${busy ? 'opacity-[0.55]' : ''}`}
+                  } ${busy ? "opacity-[0.55]" : ""}`}
                 >
-                  <Text className="text-[13px] font-semibold text-[#F2F8F5]">Galería</Text>
+                  <Text className="text-[13px] font-semibold text-app-text">
+                    Galería
+                  </Text>
                 </View>
               )}
             </Pressable>
             <Pressable
-              onPress={() => pick('camera')}
+              onPress={() => pick("camera")}
               disabled={busy}
               accessibilityRole="button"
-              className="min-h-[40px]"
+              className="min-h-10"
             >
               {({ pressed }) => (
                 <View
-                  className={`min-h-[40px] items-center justify-center rounded-[12px] border border-[#183850] bg-[#0C2236] px-[14px] ${
-                    pressed && !busy ? 'border-[rgba(47,214,139,0.4)]' : ''
-                  } ${busy ? 'opacity-[0.55]' : ''}`}
+                  className={`min-h-10 items-center justify-center rounded-xl border border-app-navy-line bg-app-navy-soft px-3.5 ${
+                    pressed && !busy ? "border-[rgba(47,214,139,0.4)]" : ""
+                  } ${busy ? "opacity-[0.55]" : ""}`}
                 >
-                  <Text className="text-[13px] font-semibold text-[#F2F8F5]">Cámara</Text>
+                  <Text className="text-[13px] font-semibold text-app-text">
+                    Cámara
+                  </Text>
                 </View>
               )}
             </Pressable>
-            {imagen ? <Text className="text-[11px] text-[#A8F2C9]">Nueva imagen seleccionada</Text> : null}
+            {imagen ? (
+              <Text className="text-[11px] text-app-green-light-light">
+                Nueva imagen seleccionada
+              </Text>
+            ) : null}
           </View>
         </View>
       </View>
@@ -182,10 +221,10 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
         <Label>NOMBRE *</Label>
         <TextInput
           value={values.nombre}
-          onChangeText={set('nombre')}
+          onChangeText={set("nombre")}
           placeholder="Nombre del producto"
           placeholderTextColor="#5C7A90"
-          className="min-h-[50px] rounded-[14px] border border-[#183850] bg-[#0C2236] px-[14px] py-3 text-[14px] text-[#F2F8F5]"
+          className="min-h-12.5ounded-[14px] border border-app-navy-line bg-app-navy-soft px-3.5 py-3 text-[14px] text-app-text"
           editable={!busy}
           selectionColor="#2FD68B"
           keyboardAppearance="dark"
@@ -197,10 +236,10 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
           <Label>PRECIO *</Label>
           <TextInput
             value={values.precio}
-            onChangeText={set('precio')}
+            onChangeText={set("precio")}
             placeholder="0.00"
             placeholderTextColor="#5C7A90"
-            className="min-h-[50px] rounded-[14px] border border-[#183850] bg-[#0C2236] px-[14px] py-3 text-[14px] text-[#F2F8F5]"
+            className="min-h-12.5 rounded-[14px] border border-app-navy-line bg-app-navy-soft px-3.5 py-3 text-[14px] text-app-text"
             editable={!busy}
             keyboardType="decimal-pad"
             selectionColor="#2FD68B"
@@ -211,10 +250,10 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
           <Label>STOCK *</Label>
           <TextInput
             value={values.stock}
-            onChangeText={set('stock')}
+            onChangeText={set("stock")}
             placeholder="0"
             placeholderTextColor="#5C7A90"
-            className="min-h-[50px] rounded-[14px] border border-[#183850] bg-[#0C2236] px-[14px] py-3 text-[14px] text-[#F2F8F5]"
+            className="min-h-12.5 rounded-[14px] border border-app-navy-lineline bg-app-navy-soft px-3.5 py-3 text-[14px] text-app-text"
             editable={!busy}
             keyboardType="number-pad"
             selectionColor="#2FD68B"
@@ -227,11 +266,11 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
         <Label>DESCRIPCIÓN</Label>
         <TextInput
           value={values.descripcion}
-          onChangeText={set('descripcion')}
+          onChangeText={set("descripcion")}
           placeholder="Descripción breve"
           placeholderTextColor="#5C7A90"
-          className="min-h-[90px] rounded-[14px] border border-[#183850] bg-[#0C2236] px-[14px] py-3 text-[14px] text-[#F2F8F5]"
-          style={{ textAlignVertical: 'top' }}
+          className="min-h-22.5 rounded-[14px] border border-app-navy-line bg-app-navy-soft px-3.5 py-3 text-[14px] text-app-text"
+          style={{ textAlignVertical: "top" }}
           editable={!busy}
           multiline
           selectionColor="#2FD68B"
@@ -239,20 +278,22 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
         />
       </View>
 
-      <View className="mt-1 flex-row gap-[10px]">
+      <View className="mt-1 flex-row gap-2.5">
         <Pressable
           onPress={onCancel}
           disabled={busy}
           accessibilityRole="button"
-          className="min-h-[50px]"
+          className="min-h-12.5"
         >
           {({ pressed }) => (
             <View
-              className={`min-h-[50px] items-center justify-center rounded-[15px] border border-[#183850] px-[14px] ${
-                pressed && !busy ? 'border-[rgba(47,214,139,0.4)]' : ''
-              } ${busy ? 'opacity-[0.55]' : ''}`}
+              className={`min-h-12.5 items-center justify-center rounded-[15px] border border-app-navy-line px-3.5 ${
+                pressed && !busy ? "border-[rgba(47,214,139,0.4)]" : ""
+              } ${busy ? "opacity-[0.55]" : ""}`}
             >
-              <Text className="text-[14px] font-semibold text-[#8FA8BA]">Cancelar</Text>
+              <Text className="text-[14px] font-semibold text-app-text-muted">
+                Cancelar
+              </Text>
             </View>
           )}
         </Pressable>
@@ -260,19 +301,19 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
           onPress={submit}
           disabled={busy}
           accessibilityRole="button"
-          className="min-h-[50px] flex-1"
+          className="min-h-12.5 flex-1"
         >
           {({ pressed }) => (
             <View
-              className={`min-h-[50px] flex-1 items-center justify-center rounded-[15px] px-[14px] ${
-                pressed && !busy ? 'bg-[#2FD68B]' : 'bg-[#A8F2C9]'
-              } ${busy ? 'opacity-[0.55]' : ''}`}
+              className={`min-h-12.5 flex-1 items-center justify-center rounded-[15px] px-3.5 ${
+                pressed && !busy ? "bg-app-green" : "bg-app-green-light"
+              } ${busy ? "opacity-[0.55]" : ""}`}
             >
               {busy ? (
                 <ActivityIndicator color="#072A1E" />
               ) : (
-                <Text className="text-[14px] font-extrabold text-[#072A1E]">
-                  {editing ? 'Guardar cambios' : 'Crear producto'}
+                <Text className="text-[14px] font-extrabold text-app-green-deep">
+                  {editing ? "Guardar cambios" : "Crear producto"}
                 </Text>
               )}
             </View>

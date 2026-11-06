@@ -1,7 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,7 +13,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LottieButton } from '@/components/ui/LottieButton';
+import { GoogleButton } from '@/components/ui/GoogleButton';
 import type { AuthUser } from '@/features/auth/supabaseAuth';
+import { useAlertSystem } from '@/features/alerts/useAlertSystem';
+import { useFormValidation } from '@/features/validation/useFormValidation';
+import { validationRuleCombinations } from '@/features/validation/validationRules';
 
 /**
  * Paleta de la tienda: azules profundos como base y verdes (claros y oscuros)
@@ -88,6 +92,13 @@ const inputBase =
 
 export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
   const passwordRef = useRef<TextInput>(null);
+  const { alertError, alertSuccess, alertWarning } = useAlertSystem();
+
+  // Validación en tiempo real
+  const validation = useFormValidation({
+    email: validationRuleCombinations.loginEmail,
+    password: validationRuleCombinations.loginPassword,
+  });
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -95,54 +106,43 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
   const [remember, setRemember] = useState(true);
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
   const [loading, setLoading] = useState<LoadingAction>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const isBusy = loading !== null;
-
-  const clearMessages = () => {
-    setError(null);
-    setNotice(null);
-  };
 
   const handleEmailSignIn = async () => {
     if (isBusy) return;
 
-    clearMessages();
-
     const cleanEmail = email.trim();
 
-    if (!cleanEmail || !password) {
-      setError('Escribe tu correo y tu contraseña para continuar.');
-      return;
-    }
-
-    if (!EMAIL_PATTERN.test(cleanEmail)) {
-      setError('Escribe un correo electrónico válido.');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.');
+    // Usar validación del hook
+    if (!validation.isFormValid) {
+      const errors = validation.getFormErrors();
+      const firstError = Object.values(errors)[0];
+      if (firstError) {
+        alertWarning(firstError, 'invalidCredentials');
+      } else {
+        alertWarning('Verifica que todos los campos sean correctos.', 'invalidCredentials');
+      }
       return;
     }
 
     setLoading('email');
 
     try {
-      // Se carga bajo demanda para no inicializar Supabase durante el render
-      // estático en web (AsyncStorage necesita `window`).
       const { auth, signInWithEmailAndPassword } = await import('@/features/auth/supabaseAuth');
       const { user } = await signInWithEmailAndPassword(auth, cleanEmail, password);
       setPassword('');
-      setNotice(`Sesión iniciada como ${user.email ?? cleanEmail}.`);
+      validation.resetAll();
+      alertSuccess(
+        `Sesión iniciada como ${user.email ?? cleanEmail}.`,
+        'correctCredentials',
+        4000,
+        true
+      );
       onSignedIn?.(user);
     } catch (signInError) {
-      setError(
-        signInError instanceof Error
-          ? signInError.message
-          : 'No se pudo iniciar sesión. Inténtalo de nuevo.',
-      );
+      const errorMsg = signInError instanceof Error ? signInError.message : 'No se pudo iniciar sesión. Inténtalo de nuevo.';
+      alertError(errorMsg, 'invalidCredentials');
     } finally {
       setLoading(null);
     }
@@ -151,7 +151,6 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
   const handleGoogleSignIn = async () => {
     if (isBusy) return;
 
-    clearMessages();
     setLoading('google');
 
     try {
@@ -159,16 +158,20 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
       const result = await signInWithGoogle();
 
       if (!result) {
-        setNotice('Inicio de sesión con Google cancelado.');
+        alertWarning('Inicio de sesión con Google cancelado.', 'invalidCredentials');
         return;
       }
 
-      setNotice(`Sesión iniciada como ${result.user.email ?? 'tu cuenta de Google'}.`);
+      alertSuccess(
+        `Sesión iniciada como ${result.user.email ?? 'tu cuenta de Google'}.`,
+        'correctCredentials',
+        4000,
+        true
+      );
       onSignedIn?.(result.user);
     } catch (googleError) {
-      setError(
-        googleError instanceof Error ? googleError.message : 'No se pudo iniciar sesión con Google.',
-      );
+      const errorMsg = googleError instanceof Error ? googleError.message : 'No se pudo iniciar sesión con Google.';
+      alertError(errorMsg, 'error');
     } finally {
       setLoading(null);
     }
@@ -177,12 +180,10 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
   const handleForgotPassword = async () => {
     if (isBusy) return;
 
-    clearMessages();
-
     const cleanEmail = email.trim();
 
     if (!EMAIL_PATTERN.test(cleanEmail)) {
-      setError('Escribe tu correo arriba para enviarte el enlace de recuperación.');
+      alertWarning('Escribe tu correo arriba para enviarte el enlace de recuperación.', 'invalidCredentials');
       return;
     }
 
@@ -197,7 +198,7 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
         );
         const providers = (found?.app_metadata?.providers as string[] | undefined) ?? [];
         if (found && providers.includes('google')) {
-          setError('Este correo usa Google; no se puede enviar correo de recuperación.');
+          alertError('Este correo usa Google; no se puede enviar correo de recuperación.', 'error');
           setLoading(null);
           return;
         }
@@ -205,13 +206,10 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
 
       const { auth, sendPasswordResetEmail } = await import('@/features/auth/supabaseAuth');
       await sendPasswordResetEmail(auth, cleanEmail);
-      setNotice('Te enviamos un enlace para restablecer tu contraseña.');
+      alertSuccess('Te enviamos un enlace para restablecer tu contraseña.', 'changeanresetpassword', 4000, true);
     } catch (resetError) {
-      setError(
-        resetError instanceof Error
-          ? resetError.message
-          : 'No se pudo enviar el correo de recuperación.',
-      );
+      const errorMsg = resetError instanceof Error ? resetError.message : 'No se pudo enviar el correo de recuperación.';
+      alertError(errorMsg, 'error');
     } finally {
       setLoading(null);
     }
@@ -223,16 +221,14 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
       return;
     }
 
-    clearMessages();
-
     const cleanEmail = email.trim();
 
     if (!EMAIL_PATTERN.test(cleanEmail)) {
-      setError('Escribe un correo válido para crear la cuenta.');
+      alertWarning('Escribe un correo válido para crear la cuenta.', 'invalidCredentials');
       return;
     }
     if (!password || password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.');
+      alertWarning('La contraseña debe tener al menos 6 caracteres.', 'invalidCredentials');
       return;
     }
 
@@ -250,24 +246,23 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
         identities.length === 0 || providers.includes('google') || providers.length > 1;
 
       if (yaRegistrado) {
-        setError(
-          'Este correo ya está registrado' +
-            (providers.includes('google') ? ' con Google.' : '.'),
+        alertError(
+          'Este correo ya está registrado' + (providers.includes('google') ? ' con Google.' : '.'),
+          'error'
         );
         await auth.signOut();
         return;
       }
 
       if (!session) {
-        setNotice('Cuenta creada. Revisa tu correo para verificarla antes de iniciar sesión.');
+        alertSuccess('Cuenta creada. Revisa tu correo para verificarla antes de iniciar sesión.', 'correct', 4000, true);
         return;
       }
 
-      setNotice('Cuenta creada correctamente. Ya puedes iniciar sesión.');
+      alertSuccess('¡Cuenta creada exitosamente!\nBienvenido a nuestro marketplace', 'correct', 4000, true);
     } catch (createError) {
-      setError(
-        createError instanceof Error ? createError.message : 'No se pudo crear la cuenta.',
-      );
+      const errorMsg = createError instanceof Error ? createError.message : 'No se pudo crear la cuenta.';
+      alertError(errorMsg, 'error');
     } finally {
       setLoading(null);
     }
@@ -302,42 +297,7 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
           showsVerticalScrollIndicator={false}
         >
           <View className="w-full max-w-115 self-center">
-            <View className="flex-row items-center justify-between gap-3">
-              <View className="flex-row items-center gap-3">
-                <View
-                  className="h-11.5 w-11.5tems-center justify-center rounded-[15px] bg-app-green"
-                  style={{
-                    shadowColor: '#2FD68B',
-                    shadowOpacity: 0.35,
-                    shadowRadius: 14,
-                    shadowOffset: { width: 0, height: 6 },
-                    elevation: 5,
-                  }}
-                >
-                  <Text className="text-[23px] font-black tracking-[-1px] text-app-green-deep">N</Text>
-                </View>
-                <View>
-                  <Text className="text-[17px] font-extrabold tracking-[4px] text-app-text">NEXO</Text>
-                  <Text className="mt-0.5 text-[9px] font-bold tracking-[2.6px] text-app-text-dim">
-                    TECH STORE
-                  </Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-center gap-1.5 rounded-full border border-[rgba(47,214,139,0.28)] bg-[rgba(12,59,42,0.45)] px-2.5 py-1.5">
-                <View className="h-1.5 w-1.5 rounded-[3px] bg-app-green" />
-                <Text className="text-[9px] font-bold tracking-[1.4px] text-app-green-light">EN LÍNEA</Text>
-              </View>
-            </View>
-
             <View className="mt-10.5 mb-7">
-              <View className="flex-row items-center gap-2 self-start rounded-full border border-[rgba(168,242,201,0.22)] bg-[rgba(7,42,30,0.55)] px-2.75 py-1.75">
-                <View className="h-1.25 w-1.25 rounded-[3px] bg-app-green-light" />
-                <Text className="text-[9px] font-bold tracking-[1.5px] text-app-green-light">
-                  NUEVA COLECCIÓN 2026
-                </Text>
-              </View>
-
               <Text className="mt-4.5 text-[38px] font-extrabold leading-10.75 tracking-[-1.6px] text-app-text">
                 Bienvenido{'\n'}
                 <Text className="text-app-green-light">de nuevo.</Text>
@@ -364,24 +324,6 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
                 </Text>
                 <Text className="text-[11px] text-app-text-dim">Es rápido y seguro</Text>
               </View>
-
-              {error ? (
-                <View
-                  className="mb-3.5 rounded-xl border border-[rgba(255,154,154,0.32)] bg-app-danger-bg px-3 py-2.5"
-                  accessibilityLiveRegion="polite"
-                >
-                  <Text className="text-[12px] leading-4.25 text-app-danger">{error}</Text>
-                </View>
-              ) : null}
-
-              {notice ? (
-                <View
-                  className="mb-3.5 rounded-xl border border-[rgba(47,214,139,0.32)] bg-[rgba(12,59,42,0.75)] px-3 py-2.5"
-                  accessibilityLiveRegion="polite"
-                >
-                  <Text className="text-[12px] leading-4.25 text-app-green-light">{notice}</Text>
-                </View>
-              ) : null}
 
               <View className="mb-3.5">
                 <FieldLabel>CORREO ELECTRÓNICO</FieldLabel>
@@ -487,39 +429,14 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
                 </Pressable>
               </View>
 
-              <Pressable
+              <LottieButton
+                animation="loginandlogout"
+                label={loading === 'email' ? 'Iniciando…' : 'Iniciar sesión'}
                 onPress={handleEmailSignIn}
+                busy={loading === 'email'}
                 disabled={isBusy}
-                accessibilityRole="button"
-                accessibilityLabel="Iniciar sesión"
-                className="h-14"
-              >
-                {({ pressed }) => (
-                  <View
-                    className={`h-14 items-center justify-center rounded-[17px] ${
-                      pressed && !isBusy ? 'bg-app-green' : 'bg-app-green-light'
-                    } ${isBusy && loading !== 'email' ? 'opacity-[0.55]' : ''}`}
-                    style={[
-                      pressed && !isBusy ? { transform: [{ scale: 0.99 }] } : null,
-                      {
-                        shadowColor: '#2FD68B',
-                        shadowOpacity: 0.3,
-                        shadowRadius: 18,
-                        shadowOffset: { width: 0, height: 10 },
-                        elevation: 6,
-                      },
-                    ]}
-                  >
-                    {loading === 'email' ? (
-                      <ActivityIndicator color="#072A1E" />
-                    ) : (
-                      <Text className="text-[15px] font-extrabold tracking-[0.4px] text-app-green-deep">
-                        Iniciar sesión
-                      </Text>
-                    )}
-                  </View>
-                )}
-              </Pressable>
+                className="h-14 w-full"
+              />
 
               <View className="my-4.5 flex-row items-center gap-3">
                 <View className="h-px flex-1 bg-[rgba(143,168,186,0.16)]" />
@@ -527,48 +444,23 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
                 <View className="h-px flex-1 bg-[rgba(143,168,186,0.16)]" />
               </View>
 
-              <Pressable
+              <GoogleButton
+                label={loading === 'google' ? 'Iniciando…' : 'Continuar con Google'}
                 onPress={handleGoogleSignIn}
+                busy={loading === 'google'}
                 disabled={isBusy}
-                accessibilityRole="button"
-                accessibilityLabel="Continuar con Google"
-                className="h-13.5"
-              >
-                {({ pressed }) => (
-                  <View
-                    className={`h-13.5 flex-row items-center justify-center gap-2.5 rounded-[17px] border ${
-                      pressed && !isBusy
-                        ? 'border-[rgba(47,214,139,0.4)] bg-app-navy-soft'
-                        : 'border-app-navy-line bg-app-navy'
-                    } ${isBusy && loading !== 'google' ? 'opacity-[0.55]' : ''}`}
-                  >
-                    {loading === 'google' ? (
-                      <ActivityIndicator color="#A8F2C9" />
-                    ) : (
-                      <>
-                        <View className="h-6 w-6 items-center justify-center rounded-full bg-[#FFFFFF]">
-                          <Text className="text-[14px] font-black leading-4.5 text-[#1A73E8]">G</Text>
-                        </View>
-                        <Text className="text-[14px] font-semibold text-app-text">
-                          Continuar con Google
-                        </Text>
-                      </>
-                    )}
-                  </View>
-                )}
-              </Pressable>
+                className="h-13.5 w-full"
+              />
             </View>
 
             <View className="mt-5.5 flex-row items-center justify-center gap-1.5">
               <Text className="text-[13px] text-app-text-muted">¿No tienes cuenta?</Text>
-              <Pressable
+              <LottieButton
+                animation="newUser"
+                label="Crear cuenta"
                 onPress={handleCreateAccount}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Crear cuenta"
-              >
-                <Text className="text-[13px] font-bold text-app-green-light">Crear cuenta</Text>
-              </Pressable>
+                compact
+              />
             </View>
 
             <Text className="mt-4.5 px-3 text-center text-[10px] leading-3.75 text-app-text-dim">
