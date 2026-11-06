@@ -40,6 +40,13 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
 /** Atajo para las operaciones de autenticación: `auth.getUser()`, `auth.signOut()`, etc. */
 export const auth = supabase.auth;
 
+export const supabaseAdmin =
+  supabaseUrl && process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(supabaseUrl, process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : null;
+
 /**
  * Activa la renovación automática del token solo mientras la app está en
  * primer plano (patrón recomendado por Supabase para React Native).

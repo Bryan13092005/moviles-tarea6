@@ -196,6 +196,20 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
     setLoading('reset');
 
     try {
+      const { supabaseAdmin } = await import('@/db/supabase');
+      if (supabaseAdmin) {
+        const { data } = await supabaseAdmin.auth.admin.listUsers();
+        const found = data?.users?.find(
+          (u) => (u.email ?? '').toLowerCase() === cleanEmail.toLowerCase(),
+        );
+        const providers = (found?.app_metadata?.providers as string[] | undefined) ?? [];
+        if (found && providers.includes('google')) {
+          setError('Este correo usa Google; no se puede enviar correo de recuperación.');
+          setLoading(null);
+          return;
+        }
+      }
+
       const { auth, sendPasswordResetEmail } = await import(
         '@/features/auth/supabaseAuth'
       );
@@ -212,14 +226,64 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
     }
   };
 
-  const handleCreateAccount = () => {
+  const handleCreateAccount = async () => {
     if (onCreateAccount) {
       onCreateAccount();
       return;
     }
 
     clearMessages();
-    setNotice('La creación de cuentas estará disponible muy pronto.');
+
+    const cleanEmail = email.trim();
+
+    if (!EMAIL_PATTERN.test(cleanEmail)) {
+      setError('Escribe un correo válido para crear la cuenta.');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    setLoading('email');
+
+    try {
+      const { auth, createUserWithEmailAndPassword } = await import(
+        '@/features/auth/supabaseAuth'
+      );
+      const { user, session } = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+
+      const providers = (user.app_metadata?.providers as string[] | undefined) ?? [];
+      const identities = user.identities ?? [];
+      const yaRegistrado =
+        identities.length === 0 ||
+        providers.includes('google') ||
+        providers.length > 1;
+
+      if (yaRegistrado) {
+        setError(
+          'Este correo ya está registrado' +
+            (providers.includes('google') ? ' con Google.' : '.'),
+        );
+        await auth.signOut();
+        return;
+      }
+
+      if (!session) {
+        setNotice('Cuenta creada. Revisa tu correo para verificarla antes de iniciar sesión.');
+        return;
+      }
+
+      setNotice('Cuenta creada correctamente. Ya puedes iniciar sesión.');
+    } catch (createError) {
+      setError(
+        createError instanceof Error
+          ? createError.message
+          : 'No se pudo crear la cuenta.',
+      );
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (
