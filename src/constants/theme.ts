@@ -1,0 +1,17 @@
+export const palette = {
+  background: '#050F1A',
+  navy: '#081A2B',
+  navySoft: '#0C2236',
+  navyLine: '#183850',
+  blueGlow: '#1268A8',
+  text: '#F2F8F5',
+  textMuted: '#8FA8BA',
+  textDim: '#5C7A90',
+  green: '#2FD68B',
+  greenLight: '#A8F2C9',
+  greenDark: '#0C3B2A',
+  greenDeep: '#072A1E',
+  danger: '#FF9A9A',
+  dangerBg: '#34131C',
+  white: '#FFFFFF',
+} as const;

@@ -141,13 +141,24 @@ export async function subirImagenProducto(
 
   const bytes = await leerBytes(asset);
 
-  const { error } = await supabase.storage
-    .from(BUCKET_PRODUCTOS)
-    .upload(path, bytes, {
-      contentType,
-      cacheControl: '31536000',
-      upsert: false,
-    });
+  // 1. Obtener la sesión activa
+const { data: { session } } = await supabase.auth.getSession();
+
+if (!session) {
+  console.error('No hay usuario autenticado activo en el cliente de Supabase.');
+  throw new Error('Debes iniciar sesión para subir imágenes.');
+}
+
+console.log('Usuario autenticado enviando la petición:', session.user.id);
+
+// 2. Proceder con la subida normalmente
+const { error } = await supabase.storage
+  .from(BUCKET_PRODUCTOS)
+  .upload(path, bytes, {
+    contentType,
+    cacheControl: '31536000',
+    upsert: false,
+  });
 
   if (error) {
     throw new Error(`No se pudo subir la imagen del producto: ${error.message}`);

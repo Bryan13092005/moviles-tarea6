@@ -58,6 +58,26 @@ import type {
 
 import { supabase } from '@/db/supabase';
 
+export type ProveedorAutenticacion = 'google' | 'email' | 'desconocido';
+
+export async function obtenerProveedorAutenticacion(
+  auth: SupabaseAuthClient,
+): Promise<ProveedorAutenticacion> {
+  const {
+    data: { user },
+    error,
+  } = await auth.getUser();
+
+  if (error || !user) return 'desconocido';
+
+  const providers = user.app_metadata?.providers as string[] | undefined;
+  if (providers?.includes('google')) return 'google';
+  if (providers?.includes('email')) return 'email';
+
+  const tieneGoogle = user.identities?.some((identity) => identity.provider === 'google');
+  return tieneGoogle ? 'google' : 'email';
+}
+
 /** Cliente de autenticación de Supabase (`supabase.auth`). */
 export type SupabaseAuthClient = typeof supabase.auth;
 

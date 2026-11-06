@@ -1,6 +1,6 @@
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,52 +11,103 @@ import {
 
 import { loginPalette } from '@/components/login-screen';
 import { completeGoogleSignIn } from '@/features/auth/googleAuth';
+import { supabase } from '@/db/supabase';
 
-/** Detecta si la URL trae credenciales de Supabase (`?code=` o `#access_token=`). */
 function hasAuthParams(url: string): boolean {
   return /[?#&](code|access_token|error|error_code)=/.test(url);
 }
 
-/**
- * Destino del deep link `…/auth/callback` que se envía a Supabase como
- * `redirectTo`.
- *
- * Sirve para dos casos que `signInWithGoogle` no cubre por sí solo:
- * - **Web**: el navegador navega a `/auth/callback#access_token=…` y esta ruta
- *   es la que crea la sesión.
- * - **Nativo**: si el sistema abre la app por su cuenta (app cerrada, Expo Go,
- *   etc.), el deep link llega aquí en lugar de al `openAuthSessionAsync`.
- */
+function buildUrlFromParams(params: Record<string, string | string[] | undefined>): string | null {
+  const entries = Object.entries(params).flatMap(([key, value]) => {
+    if (value == null) return [] as [string, string][];
+    const v = Array.isArray(value) ? value[0] : value;
+    return v ? ([[key, v]] as [string, string][]) : ([] as [string, string][]);
+  });
+  if (entries.length === 0) return null;
+  const search = new URLSearchParams(entries).toString();
+  if (!/[?&](code|access_token|error|error_code)=/.test(`?${search}`)) return null;
+  return `tarea6://auth/callback?${search}`;
+}
+
+async function goToProductsIfSignedIn(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  if (data.session?.user) {
+    router.replace('/explore');
+    return true;
+  }
+  return false;
+}
+
 export default function AuthCallbackRoute() {
   const linkingUrl = Linking.useLinkingURL();
+  const params = useLocalSearchParams<Record<string, string>>();
+  const paramUrl = useMemo(() => buildUrlFromParams(params), [params]);
   const processedUrl = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(true);
 
   useEffect(() => {
-    if (!linkingUrl || processedUrl.current === linkingUrl) return;
-    if (!hasAuthParams(linkingUrl)) return;
-
-    processedUrl.current = linkingUrl;
-
     let cancelled = false;
+    let settled = false;
 
-    completeGoogleSignIn(linkingUrl)
-      .then(() => {
-        if (!cancelled) router.replace('/');
-      })
-      .catch((callbackError: unknown) => {
-        if (cancelled) return;
-        setError(
-          callbackError instanceof Error
-            ? callbackError.message
-            : 'No se pudo completar el inicio de sesión.',
-        );
-      });
+    const done = () => {
+      settled = true;
+      if (!cancelled) setBusy(false);
+    };
 
+    const fail = async (callbackError: unknown) => {
+      if (cancelled) return;
+      const signedIn = await goToProductsIfSignedIn().catch(() => false);
+      if (signedIn || cancelled) return;
+      setError(
+        callbackError instanceof Error
+          ? callbackError.message
+          : 'No se pudo completar el inicio de sesión.',
+      );
+      done();
+    };
+
+    const finish = async (url: string) => {
+      if (cancelled || settled || processedUrl.current === url) return;
+      processedUrl.current = url;
+      try {
+        await completeGoogleSignIn(url);
+        if (!cancelled) router.replace('/explore');
+      } catch (callbackError: unknown) {
+        await fail(callbackError);
+      }
+    };
+
+    const run = async () => {
+      if (paramUrl) return finish(paramUrl);
+
+      if (linkingUrl && hasAuthParams(linkingUrl)) return finish(linkingUrl);
+
+      const initial = await Linking.getInitialURL().catch(() => null);
+      if (!cancelled && initial && hasAuthParams(initial)) return finish(initial);
+
+      if (await goToProductsIfSignedIn().catch(() => false)) return;
+
+      await new Promise((r) => setTimeout(r, 1800));
+      if (cancelled || settled) return;
+      if (await goToProductsIfSignedIn().catch(() => false)) return;
+
+      const lateUrl = (await Linking.getInitialURL().catch(() => null)) ?? linkingUrl;
+      if (!cancelled && lateUrl && hasAuthParams(lateUrl) && processedUrl.current !== lateUrl) {
+        return finish(lateUrl);
+      }
+
+      if (!cancelled) {
+        setError('No se recibieron credenciales de inicio de sesión. Vuelve a intentarlo.');
+        done();
+      }
+    };
+
+    void run().catch((e) => void fail(e));
     return () => {
       cancelled = true;
     };
-  }, [linkingUrl]);
+  }, [linkingUrl, paramUrl]);
 
   return (
     <>
@@ -79,6 +130,7 @@ export default function AuthCallbackRoute() {
           <>
             <ActivityIndicator color={loginPalette.greenLight} />
             <Text style={styles.message}>Completando el inicio de sesión…</Text>
+            {!busy ? null : null}
           </>
         )}
       </View>
