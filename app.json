@@ -32,6 +32,14 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permite acceder a tus fotos para subir imágenes de productos.",
+          "cameraPermission": "Permite usar la cámara para tomar la foto del producto.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {
