@@ -1,10 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
 
 export type ValidationRule = {
-  /** Función que retorna true si el valor es válido */
-  validate: (value: string) => boolean;
-  /** Mensaje de error cuando la validación falla */
-  message: string;
+  /** Función que retorna true si el valor es válido, false o un string de error si falla */
+  validate: (value: string) => boolean | string;
+  /** Mensaje de error por defecto cuando la validación retorna false */
+  message?: string;
 };
 
 export type FieldValidation = {
@@ -47,10 +47,14 @@ export function useFormValidation(rules: ValidationRules) {
         return { isValid: true, error: null };
       }
 
-      // Aplicar cada regla
+      // Aplicar cada regla en orden
       for (const rule of fieldRules) {
-        if (!rule.validate(value)) {
-          return { isValid: false, error: rule.message };
+        const result = rule.validate(value);
+        if (result === false) {
+          return { isValid: false, error: rule.message || 'Valor no válido' };
+        }
+        if (typeof result === 'string') {
+          return { isValid: false, error: result };
         }
       }
 
@@ -61,45 +65,126 @@ export function useFormValidation(rules: ValidationRules) {
 
   /**
    * Maneja cambios en un campo (en tiempo real mientras se escribe)
+   * Marca el campo como tocado para mostrar la validación inmediatamente
    */
   const handleFieldChange = useCallback(
-    (fieldName: string, value: string) => {
+    (fieldName: string, value: string): { isValid: boolean; error: string | null } => {
       const { isValid, error } = validateField(fieldName, value);
 
       setFieldStates((prev) => ({
         ...prev,
         [fieldName]: {
-          ...prev[fieldName],
           isValid,
+          isTouched: true,
           error,
+          isValidating: false,
         },
       }));
+
+      return { isValid, error };
     },
     [validateField]
   );
 
   /**
-   * Marca un campo como tocado (cuando pierde el foco)
+   * Marca un campo como tocado (cuando pierde el foco o se solicita)
    */
-  const handleFieldBlur = useCallback((fieldName: string) => {
-    setFieldStates((prev) => ({
-      ...prev,
-      [fieldName]: {
-        ...prev[fieldName],
-        isTouched: true,
-      },
-    }));
+  const handleFieldBlur = useCallback(
+    (fieldName: string, value?: string) => {
+      setFieldStates((prev) => {
+        const current = prev[fieldName] ?? {
+          isValid: true,
+          isTouched: false,
+          error: null,
+          isValidating: false,
+        };
+
+        if (value !== undefined) {
+          const { isValid, error } = validateField(fieldName, value);
+          return {
+            ...prev,
+            [fieldName]: {
+              isValid,
+              isTouched: true,
+              error,
+              isValidating: false,
+            },
+          };
+        }
+
+        return {
+          ...prev,
+          [fieldName]: {
+            ...current,
+            isTouched: true,
+          },
+        };
+      });
+    },
+    [validateField]
+  );
+
+  /**
+   * Marca un campo como enfocado
+   */
+  const handleFieldFocus = useCallback((fieldName: string) => {
+    setFieldStates((prev) => {
+      const current = prev[fieldName];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [fieldName]: {
+          ...current,
+          isValidating: true,
+        },
+      };
+    });
   }, []);
 
   /**
-   * Marca un campo como no tocado (cuando obtiene el foco)
+   * Valida todos los campos del formulario de golpe (útil para el submit)
+   * Marca todos los campos como tocados para que sus errores se muestren
    */
-  const handleFieldFocus = useCallback((fieldName: string) => {
+  const validateAll = useCallback(
+    (values: Record<string, string>): boolean => {
+      let allValid = true;
+      const nextStates: FormValidationState = {};
+
+      Object.keys(rules).forEach((field) => {
+        const val = values[field] ?? '';
+        const { isValid, error } = validateField(field, val);
+        if (!isValid) {
+          allValid = false;
+        }
+        nextStates[field] = {
+          isValid,
+          isTouched: true,
+          error,
+          isValidating: false,
+        };
+      });
+
+      setFieldStates((prev) => ({
+        ...prev,
+        ...nextStates,
+      }));
+
+      return allValid;
+    },
+    [rules, validateField]
+  );
+
+  /**
+   * Asigna un error manualmente a un campo
+   */
+  const setFieldError = useCallback((fieldName: string, error: string | null) => {
     setFieldStates((prev) => ({
       ...prev,
       [fieldName]: {
-        ...prev[fieldName],
-        isTouched: false,
+        isValid: error === null,
+        isTouched: true,
+        error,
+        isValidating: false,
       },
     }));
   }, []);
@@ -192,6 +277,8 @@ export function useFormValidation(rules: ValidationRules) {
 
     // Métodos
     validateField,
+    validateAll,
+    setFieldError,
     resetField,
     resetAll,
     getFieldState,

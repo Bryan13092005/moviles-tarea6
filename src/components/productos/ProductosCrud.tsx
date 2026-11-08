@@ -52,6 +52,12 @@ export function ProductosCrud() {
   const [passwordModal, setPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  const newPasswordError =
+    passwordTouched && newPassword.length < 6
+      ? 'La nueva contraseña debe tener al menos 6 caracteres.'
+      : null;
 
   const load = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') setRefreshing(true);
@@ -105,6 +111,7 @@ export function ProductosCrud() {
     }
     setCurrentPassword('');
     setNewPassword('');
+    setPasswordTouched(false);
     setPasswordModal(true);
   };
 
@@ -124,6 +131,7 @@ export function ProductosCrud() {
 
   const handleChangePassword = async () => {
     if (accountBusy) return;
+    setPasswordTouched(true);
 
     if (newPassword.length < 6) {
       alertError('La nueva contraseña debe tener al menos 6 caracteres.', 'invalidCredentials');
@@ -313,16 +321,34 @@ export function ProductosCrud() {
           <Text className="text-[9px] font-bold tracking-[1.6px] text-[#8FA8BA]">NUEVA CONTRASEÑA</Text>
           <TextInput
             value={newPassword}
-            onChangeText={setNewPassword}
+            onChangeText={(text) => {
+              setNewPassword(text);
+              setPasswordTouched(true);
+            }}
             placeholder="Mínimo 6 caracteres"
             placeholderTextColor="#5C7A90"
-            className="min-h-[50px] rounded-[14px] border border-[#183850] bg-[#0C2236] px-[14px] text-[14px] text-[#F2F8F5]"
+            className={`min-h-[50px] rounded-[14px] border bg-[#0C2236] px-[14px] text-[14px] text-[#F2F8F5] ${
+              newPasswordError
+                ? 'border-[#FF9A9A]'
+                : passwordTouched && newPassword.length >= 6
+                  ? 'border-[#2FD68B]'
+                  : 'border-[#183850]'
+            }`}
             secureTextEntry
             autoCapitalize="none"
             editable={accountBusy !== 'password'}
             selectionColor="#2FD68B"
             keyboardAppearance="dark"
           />
+          {newPasswordError ? (
+            <Text className="text-[12px] font-medium leading-4 text-[#FF9A9A]">
+              {newPasswordError}
+            </Text>
+          ) : passwordTouched && newPassword.length >= 6 ? (
+            <Text className="text-[12px] font-medium leading-4 text-[#2FD68B]">
+              ✓ Contraseña válida
+            </Text>
+          ) : null}
         </View>
         <View className="mt-1 flex-row gap-[10px]">
           <Pressable

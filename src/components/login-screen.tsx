@@ -42,8 +42,6 @@ export const loginPalette = {
   white: '#FFFFFF',
 } as const;
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 type LoadingAction = 'email' | 'google' | 'reset' | null;
 
 export type LoginScreenProps = {
@@ -107,15 +105,39 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
   const [loading, setLoading] = useState<LoadingAction>(null);
 
+  const emailState = validation.getFieldState('email');
+  const passwordState = validation.getFieldState('password');
+
+  const isEmailError = Boolean(emailState.isTouched && emailState.error);
+  const isEmailSuccess = Boolean(emailState.isTouched && emailState.isValid && email.trim().length > 0);
+  const emailBorderClass = isEmailError
+    ? 'border-app-danger bg-app-navy'
+    : isEmailSuccess
+      ? 'border-app-green bg-app-navy'
+      : focusedField === 'email'
+        ? 'border-app-green bg-app-navy-soft'
+        : 'border-app-navy-line bg-app-navy';
+
+  const isPasswordError = Boolean(passwordState.isTouched && passwordState.error);
+  const isPasswordSuccess = Boolean(passwordState.isTouched && passwordState.isValid && password.length >= 6);
+  const passwordBorderClass = isPasswordError
+    ? 'border-app-danger bg-app-navy'
+    : isPasswordSuccess
+      ? 'border-app-green bg-app-navy'
+      : focusedField === 'password'
+        ? 'border-app-green bg-app-navy-soft'
+        : 'border-app-navy-line bg-app-navy';
+
   const isBusy = loading !== null;
 
   const handleEmailSignIn = async () => {
     if (isBusy) return;
 
     const cleanEmail = email.trim();
+    const isValid = validation.validateAll({ email: cleanEmail, password });
 
     // Usar validación del hook
-    if (!validation.isFormValid) {
+    if (!isValid) {
       const errors = validation.getFormErrors();
       const firstError = Object.values(errors)[0];
       if (firstError) {
@@ -181,9 +203,14 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
     if (isBusy) return;
 
     const cleanEmail = email.trim();
+    const emailCheck = validation.validateField('email', cleanEmail);
 
-    if (!EMAIL_PATTERN.test(cleanEmail)) {
-      alertWarning('Escribe tu correo arriba para enviarte el enlace de recuperación.', 'invalidCredentials');
+    if (!emailCheck.isValid) {
+      validation.handleFieldBlur('email', cleanEmail);
+      alertWarning(
+        emailCheck.error || 'Escribe tu correo arriba para enviarte el enlace de recuperación.',
+        'invalidCredentials'
+      );
       return;
     }
 
@@ -222,13 +249,12 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
     }
 
     const cleanEmail = email.trim();
+    const isValid = validation.validateAll({ email: cleanEmail, password });
 
-    if (!EMAIL_PATTERN.test(cleanEmail)) {
-      alertWarning('Escribe un correo válido para crear la cuenta.', 'invalidCredentials');
-      return;
-    }
-    if (!password || password.length < 6) {
-      alertWarning('La contraseña debe tener al menos 6 caracteres.', 'invalidCredentials');
+    if (!isValid) {
+      const errors = validation.getFormErrors();
+      const firstError = Object.values(errors)[0];
+      alertWarning(firstError || 'Verifica que todos los campos sean correctos.', 'invalidCredentials');
       return;
     }
 
@@ -327,30 +353,64 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
 
               <View className="mb-3.5">
                 <FieldLabel>CORREO ELECTRÓNICO</FieldLabel>
-                <TextInput
-                  value={email}
-                  onChangeText={setEmail}
-                  onFocus={() => setFocusedField('email')}
-                  onBlur={() => setFocusedField(null)}
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                  placeholder="tu@correo.com"
-                  placeholderTextColor="#5C7A90"
-                  className={`${inputBase} ${
-                    focusedField === 'email'
-                      ? 'border-app-green bg-app-navy-soft'
-                      : 'border-app-navy-line bg-app-navy'
-                  }`}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                  returnKeyType="next"
-                  selectionColor="#2FD68B"
-                  keyboardAppearance="dark"
-                  editable={!isBusy}
-                  accessibilityLabel="Correo electrónico"
-                />
+                <View className="relative justify-center">
+                  <TextInput
+                    value={email}
+                    onChangeText={(text) => {
+                      setEmail(text);
+                      validation.handleFieldChange('email', text);
+                    }}
+                    onFocus={() => {
+                      setFocusedField('email');
+                      validation.handleFieldFocus('email');
+                    }}
+                    onBlur={() => {
+                      setFocusedField(null);
+                      validation.handleFieldBlur('email', email);
+                    }}
+                    onSubmitEditing={() => passwordRef.current?.focus()}
+                    placeholder="tu@correo.com"
+                    placeholderTextColor="#5C7A90"
+                    className={`${inputBase} pr-10 ${emailBorderClass}`}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="email"
+                    textContentType="emailAddress"
+                    returnKeyType="next"
+                    selectionColor="#2FD68B"
+                    keyboardAppearance="dark"
+                    editable={!isBusy}
+                    accessibilityLabel="Correo electrónico"
+                  />
+                  {emailState.isTouched && email.length > 0 && (
+                    <View
+                      pointerEvents="none"
+                      className="absolute right-3.5 top-0 bottom-0 justify-center"
+                    >
+                      <Text
+                        className={`text-[13px] font-extrabold ${
+                          isEmailError ? 'text-app-danger' : 'text-app-green'
+                        }`}
+                      >
+                        {isEmailError ? '✕' : '✓'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {/* Mensaje de error o éxito debajo del campo */}
+                {isEmailError ? (
+                  <Text
+                    className="mt-1.5 text-[12px] font-medium leading-4 text-app-danger"
+                    accessibilityRole="alert"
+                  >
+                    {emailState.error}
+                  </Text>
+                ) : isEmailSuccess ? (
+                  <Text className="mt-1.5 text-[12px] font-medium leading-4 text-app-green">
+                    ✓ Formato de correo válido
+                  </Text>
+                ) : null}
               </View>
 
               <View className="mb-3.5">
@@ -359,17 +419,22 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
                   <TextInput
                     ref={passwordRef}
                     value={password}
-                    onChangeText={setPassword}
-                    onFocus={() => setFocusedField('password')}
-                    onBlur={() => setFocusedField(null)}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      validation.handleFieldChange('password', text);
+                    }}
+                    onFocus={() => {
+                      setFocusedField('password');
+                      validation.handleFieldFocus('password');
+                    }}
+                    onBlur={() => {
+                      setFocusedField(null);
+                      validation.handleFieldBlur('password', password);
+                    }}
                     onSubmitEditing={handleEmailSignIn}
                     placeholder="Mínimo 6 caracteres"
                     placeholderTextColor="#5C7A90"
-                    className={`${inputBase} pr-21.5 ${
-                      focusedField === 'password'
-                        ? 'border-app-green bg-app-navy-soft'
-                        : 'border-app-navy-line bg-app-navy'
-                    }`}
+                    className={`${inputBase} pr-21.5 ${passwordBorderClass}`}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -393,6 +458,19 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
                     </Text>
                   </Pressable>
                 </View>
+                {/* Mensaje de validación debajo del campo */}
+                {isPasswordError ? (
+                  <Text
+                    className="mt-1.5 text-[12px] font-medium leading-4 text-app-danger"
+                    accessibilityRole="alert"
+                  >
+                    {passwordState.error}
+                  </Text>
+                ) : isPasswordSuccess ? (
+                  <Text className="mt-1.5 text-[12px] font-medium leading-4 text-app-green">
+                    ✓ Contraseña válida
+                  </Text>
+                ) : null}
               </View>
 
               <View className="mt-0.5 mb-4.5 flex-row items-center justify-between gap-3">

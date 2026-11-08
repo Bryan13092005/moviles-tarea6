@@ -19,6 +19,8 @@ import {
   subirImagenProducto,
 } from "@/api/storage.services";
 import type { Producto } from "@/features/productos/productos.types";
+import { useFormValidation } from "@/features/validation/useFormValidation";
+import { validationRuleCombinations } from "@/features/validation/validationRules";
 
 type Values = {
   nombre: string;
@@ -55,24 +57,57 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
   const [values, setValues] = useState<Values>(() => toValues(producto));
   const [imagen, setImagen] = useState<ImagePickerAsset | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [imageTouched, setImageTouched] = useState(false);
+  const [focusedField, setFocusedField] = useState<keyof Values | null>(null);
+
+  // Hook de validación en tiempo real para todos los campos de producto
+  const validation = useFormValidation({
+    nombre: validationRuleCombinations.productName,
+    precio: validationRuleCombinations.productPrice,
+    stock: validationRuleCombinations.productStock,
+    descripcion: validationRuleCombinations.productDescription,
+  });
 
   const previewUri = imagen?.uri ?? producto?.img ?? null;
+  const hasImage = Boolean(imagen || producto?.img);
+  const imageError =
+    imageTouched && !hasImage
+      ? editing
+        ? "La imagen del producto es obligatoria."
+        : "Debes seleccionar una imagen para crear el producto."
+      : null;
 
-  const set = (key: keyof Values) => (text: string) =>
-    setValues((v) => ({ ...v, [key]: text }));
+  // Actualizar valor y validar en tiempo real mientras se escribe
+  const handleInputChange = (key: keyof Values) => (text: string) => {
+    setValues((prev) => ({ ...prev, [key]: text }));
+    validation.handleFieldChange(key, text);
+  };
+
+  const handleInputBlur = (key: keyof Values) => () => {
+    setFocusedField(null);
+    validation.handleFieldBlur(key, values[key]);
+  };
+
+  const handleInputFocus = (key: keyof Values) => () => {
+    setFocusedField(key);
+    validation.handleFieldFocus(key);
+  };
 
   const pick = async (mode: "library" | "camera") => {
     if (busy) return;
-    setError(null);
+    setServerError(null);
+    setImageTouched(true);
     try {
       const asset =
         mode === "camera"
           ? await tomarFotoProducto()
           : await seleccionarImagenProducto();
-      if (asset) setImagen(asset);
+      if (asset) {
+        setImagen(asset);
+      }
     } catch (e) {
-      setError(
+      setServerError(
         e instanceof Error ? e.message : "No se pudo seleccionar la imagen.",
       );
     }
@@ -80,23 +115,24 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
 
   const submit = async () => {
     if (busy) return;
-    setError(null);
+    setServerError(null);
+    setImageTouched(true);
+
+    // Validar todos los campos del producto en tiempo real
+    const fieldsValid = validation.validateAll(values);
+
+    if (!hasImage) {
+      return;
+    }
+
+    if (!fieldsValid) {
+      return;
+    }
 
     const nombre = values.nombre.trim();
-    const precioNum = values.precio.trim() ? Number(values.precio) : null;
-    const stockNum = values.stock.trim()
-      ? Number.parseInt(values.stock, 10)
-      : null;
-
-    if (!nombre) return setError("El nombre es obligatorio.");
-    if (precioNum == null || Number.isNaN(precioNum) || precioNum < 0)
-      return setError("Ingresa un precio válido.");
-    if (stockNum == null || Number.isNaN(stockNum) || stockNum < 0)
-      return setError("Ingresa un stock válido.");
-    if (!editing && !imagen)
-      return setError("La imagen es obligatoria para crear un producto.");
-    if (editing && !imagen && !producto?.img)
-      return setError("La imagen es obligatoria.");
+    const normalizedPrice = values.precio.trim().replace(",", ".");
+    const precioNum = Number(normalizedPrice);
+    const stockNum = Number.parseInt(values.stock.trim(), 10);
 
     setBusy(true);
     try {
@@ -136,7 +172,7 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
 
       onSaved(saved, !editing);
     } catch (e) {
-      setError(
+      setServerError(
         e instanceof Error ? e.message : "No se pudo guardar el producto.",
       );
     } finally {
@@ -144,23 +180,51 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
     }
   };
 
+  // Helper para determinar clases de borde según validación
+  const getFieldBorderClass = (key: keyof Values) => {
+    const state = validation.getFieldState(key);
+    const val = values[key];
+    const isError = state.isTouched && Boolean(state.error);
+    const isSuccess = state.isTouched && state.isValid && val.trim().length > 0;
+
+    if (isError) return "border-app-danger";
+    if (isSuccess) return "border-app-green";
+    if (focusedField === key) return "border-app-green";
+    return "border-app-navy-line";
+  };
+
+  const nombreState = validation.getFieldState("nombre");
+  const precioState = validation.getFieldState("precio");
+  const stockState = validation.getFieldState("stock");
+  const descripcionState = validation.getFieldState("descripcion");
+
   return (
     <View className="gap-3.5">
-      {error ? (
+      {/* Error de servidor si ocurre */}
+      {serverError ? (
         <View
-          className="rounded-xlder border-[rgba(255,154,154,0.32)] bg-app-danger-bg px-3 py-2.5"
+          className="rounded-xl border border-[rgba(255,154,154,0.32)] bg-app-danger-bg px-3 py-2.5"
           accessibilityLiveRegion="polite"
         >
           <Text className="text-[12px] leading-4.25 text-app-danger">
-            {error}
+            {serverError}
           </Text>
         </View>
       ) : null}
 
+      {/* Campo: IMAGEN */}
       <View className="gap-2">
         <Label>IMAGEN *</Label>
         <View className="flex-row items-center gap-3">
-          <View className="h-22 w-22 items-center justify-center overflow-hidden rounded-2xl border border-app-navy-line bg-app-bg">
+          <View
+            className={`h-22 w-22 items-center justify-center overflow-hidden rounded-2xl border bg-app-bg ${
+              imageError
+                ? "border-app-danger"
+                : hasImage
+                  ? "border-app-green"
+                  : "border-app-navy-line"
+            }`}
+          >
             {previewUri ? (
               <Image
                 source={{ uri: previewUri }}
@@ -180,8 +244,8 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
             >
               {({ pressed }) => (
                 <View
-                  className={`min-h-10 items-center justify-center rounded-xlder border-app-navy-line bg-app-navy-softsoft px-3.5
-                    pressed && !busy ? 'border-[rgba(47,214,139,0.4)]' : ''
+                  className={`min-h-10 items-center justify-center rounded-xl border border-app-navy-line bg-app-navy-soft px-3.5 ${
+                    pressed && !busy ? "border-[rgba(47,214,139,0.4)]" : ""
                   } ${busy ? "opacity-[0.55]" : ""}`}
                 >
                   <Text className="text-[13px] font-semibold text-app-text">
@@ -209,76 +273,210 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
               )}
             </Pressable>
             {imagen ? (
-              <Text className="text-[11px] text-app-green-light-light">
-                Nueva imagen seleccionada
+              <Text className="text-[11px] text-app-green-light">
+                ✓ Nueva imagen seleccionada
               </Text>
             ) : null}
           </View>
         </View>
+        {/* Mensaje de validación de imagen debajo del campo */}
+        {imageError ? (
+          <Text
+            className="mt-1 text-[12px] font-medium leading-4 text-app-danger"
+            accessibilityRole="alert"
+          >
+            {imageError}
+          </Text>
+        ) : null}
       </View>
 
-      <View className="gap-2">
+      {/* Campo: NOMBRE */}
+      <View className="gap-1.5">
         <Label>NOMBRE *</Label>
-        <TextInput
-          value={values.nombre}
-          onChangeText={set("nombre")}
-          placeholder="Nombre del producto"
-          placeholderTextColor="#5C7A90"
-          className="min-h-12.5ounded-[14px] border border-app-navy-line bg-app-navy-soft px-3.5 py-3 text-[14px] text-app-text"
-          editable={!busy}
-          selectionColor="#2FD68B"
-          keyboardAppearance="dark"
-        />
+        <View className="relative justify-center">
+          <TextInput
+            value={values.nombre}
+            onChangeText={handleInputChange("nombre")}
+            onFocus={handleInputFocus("nombre")}
+            onBlur={handleInputBlur("nombre")}
+            placeholder="Nombre del producto (mín. 3 caracteres)"
+            placeholderTextColor="#5C7A90"
+            className={`min-h-12.5 rounded-[14px] border bg-app-navy-soft px-3.5 py-3 pr-10 text-[14px] text-app-text ${getFieldBorderClass(
+              "nombre",
+            )}`}
+            editable={!busy}
+            selectionColor="#2FD68B"
+            keyboardAppearance="dark"
+          />
+          {nombreState.isTouched && values.nombre.length > 0 && (
+            <View
+              pointerEvents="none"
+              className="absolute right-3.5 top-0 bottom-0 justify-center"
+            >
+              <Text
+                className={`text-[13px] font-extrabold ${
+                  nombreState.error ? "text-app-danger" : "text-app-green"
+                }`}
+              >
+                {nombreState.error ? "✕" : "✓"}
+              </Text>
+            </View>
+          )}
+        </View>
+        {/* Mensaje de validación debajo del campo */}
+        {nombreState.isTouched && nombreState.error ? (
+          <Text
+            className="mt-1 text-[12px] font-medium leading-4 text-app-danger"
+            accessibilityRole="alert"
+          >
+            {nombreState.error}
+          </Text>
+        ) : nombreState.isTouched &&
+          nombreState.isValid &&
+          values.nombre.trim().length > 0 ? (
+          <Text className="mt-1 text-[12px] font-medium leading-4 text-app-green">
+            ✓ Nombre válido
+          </Text>
+        ) : null}
       </View>
 
-      <View className="flex-row gap-3">
-        <View className="flex-1 gap-2">
+      {/* Campos: PRECIO y STOCK en paralelo */}
+      <View className="flex-row items-start gap-3">
+        {/* Campo: PRECIO */}
+        <View className="flex-1 gap-1.5">
           <Label>PRECIO *</Label>
-          <TextInput
-            value={values.precio}
-            onChangeText={set("precio")}
-            placeholder="0.00"
-            placeholderTextColor="#5C7A90"
-            className="min-h-12.5 rounded-[14px] border border-app-navy-line bg-app-navy-soft px-3.5 py-3 text-[14px] text-app-text"
-            editable={!busy}
-            keyboardType="decimal-pad"
-            selectionColor="#2FD68B"
-            keyboardAppearance="dark"
-          />
+          <View className="relative justify-center">
+            <TextInput
+              value={values.precio}
+              onChangeText={handleInputChange("precio")}
+              onFocus={handleInputFocus("precio")}
+              onBlur={handleInputBlur("precio")}
+              placeholder="0.00"
+              placeholderTextColor="#5C7A90"
+              className={`min-h-12.5 rounded-[14px] border bg-app-navy-soft px-3.5 py-3 pr-10 text-[14px] text-app-text ${getFieldBorderClass(
+                "precio",
+              )}`}
+              editable={!busy}
+              keyboardType="decimal-pad"
+              selectionColor="#2FD68B"
+              keyboardAppearance="dark"
+            />
+            {precioState.isTouched && values.precio.length > 0 && (
+              <View
+                pointerEvents="none"
+                className="absolute right-3.5 top-0 bottom-0 justify-center"
+              >
+                <Text
+                  className={`text-[13px] font-extrabold ${
+                    precioState.error ? "text-app-danger" : "text-app-green"
+                  }`}
+                >
+                  {precioState.error ? "✕" : "✓"}
+                </Text>
+              </View>
+            )}
+          </View>
+          {/* Mensaje de validación debajo del campo */}
+          {precioState.isTouched && precioState.error ? (
+            <Text
+              className="mt-1 text-[12px] font-medium leading-4 text-app-danger"
+              accessibilityRole="alert"
+            >
+              {precioState.error}
+            </Text>
+          ) : precioState.isTouched &&
+            precioState.isValid &&
+            values.precio.trim().length > 0 ? (
+            <Text className="mt-1 text-[12px] font-medium leading-4 text-app-green">
+              ✓ Precio válido
+            </Text>
+          ) : null}
         </View>
-        <View className="flex-1 gap-2">
+
+        {/* Campo: STOCK */}
+        <View className="flex-1 gap-1.5">
           <Label>STOCK *</Label>
-          <TextInput
-            value={values.stock}
-            onChangeText={set("stock")}
-            placeholder="0"
-            placeholderTextColor="#5C7A90"
-            className="min-h-12.5 rounded-[14px] border border-app-navy-lineline bg-app-navy-soft px-3.5 py-3 text-[14px] text-app-text"
-            editable={!busy}
-            keyboardType="number-pad"
-            selectionColor="#2FD68B"
-            keyboardAppearance="dark"
-          />
+          <View className="relative justify-center">
+            <TextInput
+              value={values.stock}
+              onChangeText={handleInputChange("stock")}
+              onFocus={handleInputFocus("stock")}
+              onBlur={handleInputBlur("stock")}
+              placeholder="0"
+              placeholderTextColor="#5C7A90"
+              className={`min-h-12.5 rounded-[14px] border bg-app-navy-soft px-3.5 py-3 pr-10 text-[14px] text-app-text ${getFieldBorderClass(
+                "stock",
+              )}`}
+              editable={!busy}
+              keyboardType="number-pad"
+              selectionColor="#2FD68B"
+              keyboardAppearance="dark"
+            />
+            {stockState.isTouched && values.stock.length > 0 && (
+              <View
+                pointerEvents="none"
+                className="absolute right-3.5 top-0 bottom-0 justify-center"
+              >
+                <Text
+                  className={`text-[13px] font-extrabold ${
+                    stockState.error ? "text-app-danger" : "text-app-green"
+                  }`}
+                >
+                  {stockState.error ? "✕" : "✓"}
+                </Text>
+              </View>
+            )}
+          </View>
+          {/* Mensaje de validación debajo del campo */}
+          {stockState.isTouched && stockState.error ? (
+            <Text
+              className="mt-1 text-[12px] font-medium leading-4 text-app-danger"
+              accessibilityRole="alert"
+            >
+              {stockState.error}
+            </Text>
+          ) : stockState.isTouched &&
+            stockState.isValid &&
+            values.stock.trim().length > 0 ? (
+            <Text className="mt-1 text-[12px] font-medium leading-4 text-app-green">
+              ✓ Stock válido
+            </Text>
+          ) : null}
         </View>
       </View>
 
-      <View className="gap-2">
+      {/* Campo: DESCRIPCIÓN */}
+      <View className="gap-1.5">
         <Label>DESCRIPCIÓN</Label>
         <TextInput
           value={values.descripcion}
-          onChangeText={set("descripcion")}
-          placeholder="Descripción breve"
+          onChangeText={handleInputChange("descripcion")}
+          onFocus={handleInputFocus("descripcion")}
+          onBlur={handleInputBlur("descripcion")}
+          placeholder="Descripción breve del producto (opcional)"
           placeholderTextColor="#5C7A90"
-          className="min-h-22.5 rounded-[14px] border border-app-navy-line bg-app-navy-soft px-3.5 py-3 text-[14px] text-app-text"
+          className={`min-h-22.5 rounded-[14px] border bg-app-navy-soft px-3.5 py-3 text-[14px] text-app-text ${getFieldBorderClass(
+            "descripcion",
+          )}`}
           style={{ textAlignVertical: "top" }}
           editable={!busy}
           multiline
           selectionColor="#2FD68B"
           keyboardAppearance="dark"
         />
+        {/* Mensaje de validación debajo del campo si aplica */}
+        {descripcionState.isTouched && descripcionState.error ? (
+          <Text
+            className="mt-1 text-[12px] font-medium leading-4 text-app-danger"
+            accessibilityRole="alert"
+          >
+            {descripcionState.error}
+          </Text>
+        ) : null}
       </View>
 
-      <View className="mt-1 flex-row gap-2.5">
+      {/* Botones de acción */}
+      <View className="mt-2 flex-row gap-2.5">
         <Pressable
           onPress={onCancel}
           disabled={busy}
@@ -287,7 +485,7 @@ export function ProductoForm({ producto, onSaved, onCancel }: Props) {
         >
           {({ pressed }) => (
             <View
-              className={`min-h-12.5 items-center justify-center rounded-[15px] border border-app-navy-line px-3.5 ${
+              className={`min-h-12.5 items-center justify-center rounded-[15px] border border-app-navy-line px-4 ${
                 pressed && !busy ? "border-[rgba(47,214,139,0.4)]" : ""
               } ${busy ? "opacity-[0.55]" : ""}`}
             >
