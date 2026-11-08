@@ -232,7 +232,8 @@ export function LoginScreen({ onSignedIn, onCreateAccount }: LoginScreenProps) {
       }
 
       const { auth, sendPasswordResetEmail } = await import('@/features/auth/supabaseAuth');
-      await sendPasswordResetEmail(auth, cleanEmail);
+      const direccion:string='https://auth-esfot-inky.vercel.app/reset-password'
+      await sendPasswordResetEmail(auth, cleanEmail,direccion);
       alertSuccess('Te enviamos un enlace para restablecer tu contraseña.', 'changeanresetpassword', 4000, true);
     } catch (resetError) {
       const errorMsg = resetError instanceof Error ? resetError.message : 'No se pudo enviar el correo de recuperación.';
